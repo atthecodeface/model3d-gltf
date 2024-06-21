@@ -153,14 +153,30 @@ fn simple() -> Result<(), Error> {
 
 "##;
     let jv = serde_json::from_str::<JsonValue>(JSON)?;
-    let mut x = Gltf::of_json_value(jv)?;
-    x.gen_byte_buffers(&model3d_gltf::buf_parse_fail, None)?;
-    let h = x.node_hierarchy();
+    let mut gltf = Gltf::of_json_value(jv)?;
+    let h = gltf.node_hierarchy();
     assert_eq!(h.len(), 3);
     assert_eq!(h.borrow_roots().len(), 3);
-    assert!(x.get_node("0").is_some());
-    assert_eq!(x.get_node("0"), x.get_node("Cube"));
-    assert_eq!(x.get_node("1"), x.get_node("Light"));
-    assert_eq!(x.get_node("2"), x.get_node("Camera"));
+    assert!(gltf.get_node("0").is_some());
+    assert_eq!(gltf.get_node("0"), gltf.get_node("Cube"));
+    assert_eq!(gltf.get_node("1"), gltf.get_node("Light"));
+    assert_eq!(gltf.get_node("2"), gltf.get_node("Camera"));
+
+    let mut od = model3d_gltf::ObjectData::new(&gltf);
+    od.add_object(&gltf, gltf.get_node("Cube").unwrap());
+    od.derive_uses(&gltf);
+    let buffers = od.gen_byte_buffers(&mut gltf, &model3d_gltf::buf_parse_fail, None)?;
+    let buffer_data =
+        od.gen_buffer_data::<_, _, model3d_base::example_client::Renderable>(&|x| &buffers[x]);
+    let buffer_accessors = od.gen_accessors(&gltf, &|x| &buffer_data[x]);
+    let vertices = od.gen_vertices(&gltf, &|x| &buffer_accessors[x]);
+    let object = od.gen_object(&vertices);
+    println!("{od:?}");
+    println!("{buffers:?}");
+    println!("{buffer_data:?}");
+    println!("{buffer_accessors:?}");
+    println!("{vertices:?}");
+    println!("{object:?}");
+    assert!(false);
     Ok(())
 }

@@ -75,10 +75,11 @@
 /// mesh is only positioned (in Gltf) by the positions of the associated
 /// joints, a skinned mesh cannot be instantiated into render space at more
 /// than one location in a scene.
-use model3d_base::{Object, Renderable};
-
 mod error;
 pub use error::{Error, Result};
+
+mod types;
+pub use types::*;
 
 mod traits;
 pub use traits::Named;
@@ -87,13 +88,17 @@ mod glb;
 pub use glb::glb_load;
 
 mod buffers_accessors;
-pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
-
-mod primitives_meshes;
-pub(crate) use primitives_meshes::{GltfMesh, GltfPrimitive};
-
 mod node;
+mod primitives_meshes;
+mod scene;
+
+pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
 pub(crate) use node::GltfNode;
+pub(crate) use primitives_meshes::{GltfMesh, GltfPrimitive};
+pub(crate) use scene::GltfScene;
+
+mod gltf_json_value;
+pub use gltf_json_value::GltfJsonValue;
 
 mod gltf;
-pub use gltf::{buf_parse_fail, try_buf_parse_base64, Gltf};
+pub use gltf::{buf_parse_fail, try_buf_parse_base64, Gltf, ObjectData};

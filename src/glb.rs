@@ -100,11 +100,13 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
         if json_byte_length > self.max_json_length {
             return Err(Error::GlbJsonHdr);
         }
-        let mut buffer = Vec::with_capacity(json_byte_length);
-        if self.file.read(&mut buffer)? < json_byte_length {
+        let mut buffer = vec![0; json_byte_length];
+        let bytes_read = self.file.read(&mut buffer)?;
+        if bytes_read < json_byte_length {
             return Err(Error::GlbJsonLength);
         }
         self.json_value = serde_json::from_str(std::str::from_utf8(&buffer)?)?;
+        dbg!(&self.json_value);
         Ok(())
     }
 
