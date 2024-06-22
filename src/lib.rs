@@ -99,9 +99,6 @@ pub(crate) use node::GltfNode;
 pub(crate) use primitives_meshes::GltfMesh;
 pub(crate) use scene::GltfScene;
 
-mod gltf_json_value;
-pub use gltf_json_value::GltfJsonValue;
-
 mod utils;
 pub use utils::{buf_parse_fail, try_buf_parse_base64};
 
