@@ -87,18 +87,26 @@ pub use traits::Named;
 mod glb;
 pub use glb::glb_load;
 
+mod buffer_usage;
 mod buffers_accessors;
 mod node;
 mod primitives_meshes;
 mod scene;
 
+pub(crate) use buffer_usage::BufferUsage;
 pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
 pub(crate) use node::GltfNode;
-pub(crate) use primitives_meshes::{GltfMesh, GltfPrimitive};
+pub(crate) use primitives_meshes::GltfMesh;
 pub(crate) use scene::GltfScene;
 
 mod gltf_json_value;
 pub use gltf_json_value::GltfJsonValue;
 
+mod utils;
+pub use utils::{buf_parse_fail, try_buf_parse_base64};
+
 mod gltf;
-pub use gltf::{buf_parse_fail, try_buf_parse_base64, Gltf, ObjectData};
+pub use gltf::Gltf;
+
+mod object_data;
+pub use object_data::ObjectData;

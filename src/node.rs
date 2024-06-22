@@ -55,10 +55,7 @@ impl GltfNode {
             )));
         }
         if self.matrix.is_some() {
-            if self.rotation.is_some()
-                || self.translation.is_some()
-                || self.scale.is_some()
-            {
+            if self.rotation.is_some() || self.translation.is_some() || self.scale.is_some() {
                 return Err(Error::BadJson(format!(
                     "Node {n} has a matrix and some TRS",
                 )));
@@ -72,10 +69,7 @@ impl GltfNode {
         Ok(())
     }
 
-    pub fn derive(
-        &mut self,
-        parent_transformation: &Transformation,
-    ) -> &Transformation {
+    pub fn derive(&mut self, parent_transformation: &Transformation) -> &Transformation {
         self.local_transformation = Transformation::default();
         if let Some(matrix) = self.matrix {
             self.local_transformation.from_mat4(matrix);
@@ -84,8 +78,7 @@ impl GltfNode {
                 self.local_transformation.set_scale(scale.into());
             }
             if let Some(rotation) = self.rotation {
-                let rotation =
-                    (rotation[3], rotation[0], rotation[1], rotation[2]).into();
+                let rotation = (rotation[3], rotation[0], rotation[1], rotation[2]).into();
                 self.local_transformation.set_rotation(rotation);
             }
             if let Some(translation) = self.translation {

@@ -136,8 +136,7 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
             | ((hdr[2] as u32) << 16)
             | ((hdr[3] as u32) << 24);
         let bin_byte_length = bin_byte_length as usize;
-        self.buffer_0 = buf_reader(self.file, bin_byte_length)
-            .map_err(|e| Error::GlbBinIo(e))?;
+        self.buffer_0 = buf_reader(self.file, bin_byte_length).map_err(|e| Error::GlbBinIo(e))?;
         Ok(())
     }
 
@@ -150,11 +149,7 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
     }
 }
 
-pub fn glb_load<F, B, BR>(
-    file: &mut F,
-    b: &BR,
-    max_json_length: usize,
-) -> Result<(Gltf, Option<B>)>
+pub fn glb_load<F, B, BR>(file: &mut F, b: &BR, max_json_length: usize) -> Result<(Gltf, Option<B>)>
 where
     F: std::io::Read,
     BR: Fn(&mut F, usize) -> std::result::Result<Option<B>, std::io::Error>,

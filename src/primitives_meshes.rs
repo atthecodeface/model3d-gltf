@@ -25,9 +25,7 @@ where
             "TEXCOORD_0" => TexCoords0,
             "TEXCOORD_1" => TexCoords1,
             _ => {
-                return Err(serde::de::Error::custom(format!(
-                    "Unknown attribute {k}"
-                )));
+                return Err(serde::de::Error::custom(format!("Unknown attribute {k}")));
             }
         };
         r.push((k, v.into()));
@@ -35,9 +33,7 @@ where
     Ok(r)
 }
 
-fn primitive_type<'de, D>(
-    de: D,
-) -> std::result::Result<model3d_base::PrimitiveType, D::Error>
+fn primitive_type<'de, D>(de: D) -> std::result::Result<model3d_base::PrimitiveType, D::Error>
 where
     D: Deserializer<'de>,
 {

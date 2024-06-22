@@ -3,10 +3,7 @@ use serde;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
-use crate::{
-    BufferIndex, GltfAccessor, GltfBuffer, GltfBufferView, GltfMesh, GltfNode,
-    GltfScene,
-};
+use crate::{BufferIndex, GltfAccessor, GltfBuffer, GltfBufferView, GltfMesh, GltfNode, GltfScene};
 use crate::{Error, Result};
 use crate::{NodeIndex, SceneIndex};
 
