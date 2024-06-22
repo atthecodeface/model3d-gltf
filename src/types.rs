@@ -42,3 +42,5 @@ index_type!(SceneIndex);
 index_type!(ViewIndex);
 index_type!(BufferIndex);
 index_type!(AccessorIndex);
+index_type!(ImageIndex);
+index_type!(TextureIndex);

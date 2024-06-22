@@ -89,15 +89,19 @@ pub use glb::glb_load;
 
 mod buffer_usage;
 mod buffers_accessors;
+mod image;
 mod node;
 mod primitives_meshes;
 mod scene;
+mod texture;
 
 pub(crate) use buffer_usage::BufferUsage;
 pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
+pub(crate) use image::GltfImage;
 pub(crate) use node::GltfNode;
 pub(crate) use primitives_meshes::GltfMesh;
 pub(crate) use scene::GltfScene;
+pub(crate) use texture::GltfTexture;
 
 mod utils;
 pub use utils::{buf_parse_fail, try_buf_parse_base64};

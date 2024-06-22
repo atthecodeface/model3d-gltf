@@ -5,9 +5,14 @@ use serde;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
-use crate::{AccessorIndex, BufferIndex, MeshIndex, NodeIndex, SceneIndex, ViewIndex};
+use crate::{
+    AccessorIndex, BufferIndex, ImageIndex, MeshIndex, NodeIndex, SceneIndex, TextureIndex,
+    ViewIndex,
+};
 use crate::{Error, Named, Result};
-use crate::{GltfAccessor, GltfBuffer, GltfBufferView, GltfMesh, GltfNode, GltfScene};
+use crate::{
+    GltfAccessor, GltfBuffer, GltfBufferView, GltfImage, GltfMesh, GltfNode, GltfScene, GltfTexture,
+};
 
 //a Gltf
 //tp Gltf
@@ -29,15 +34,18 @@ pub struct Gltf {
     scene: Option<SceneIndex>,
     materials: Vec<JsonValue>,
     cameras: Vec<JsonValue>,
-    images: JsonValue,
+    images: Vec<GltfImage>,
     samplers: JsonValue,
-    textures: JsonValue,
+    textures: Vec<GltfTexture>,
     skins: Vec<JsonValue>,
     animations: JsonValue,
+
     /// The hierarchy of nodes
     #[serde(skip_deserializing)]
     node_hierarchy: Hierarchy<NodeIndex>,
+
     /// Which node hierarchy element a particular NodeIndex corresponds to
+    #[serde(skip_deserializing)]
     nh_index: Vec<usize>,
 }
 
@@ -45,7 +53,7 @@ pub struct Gltf {
 impl std::ops::Index<NodeIndex> for Gltf {
     type Output = GltfNode;
     fn index(&self, index: NodeIndex) -> &Self::Output {
-        &self.nodes()[index.as_usize()]
+        &self.nodes[index.as_usize()]
     }
 }
 
@@ -53,7 +61,7 @@ impl std::ops::Index<NodeIndex> for Gltf {
 impl std::ops::Index<AccessorIndex> for Gltf {
     type Output = GltfAccessor;
     fn index(&self, index: AccessorIndex) -> &Self::Output {
-        &self.accessors()[index.as_usize()]
+        &self.accessors[index.as_usize()]
     }
 }
 
@@ -61,7 +69,7 @@ impl std::ops::Index<AccessorIndex> for Gltf {
 impl std::ops::Index<ViewIndex> for Gltf {
     type Output = GltfBufferView;
     fn index(&self, index: ViewIndex) -> &Self::Output {
-        &self.buffer_views()[index.as_usize()]
+        &self.buffer_views[index.as_usize()]
     }
 }
 
@@ -69,7 +77,23 @@ impl std::ops::Index<ViewIndex> for Gltf {
 impl std::ops::Index<MeshIndex> for Gltf {
     type Output = GltfMesh;
     fn index(&self, index: MeshIndex) -> &Self::Output {
-        &self.meshes()[index.as_usize()]
+        &self.meshes[index.as_usize()]
+    }
+}
+
+//ip Index<ImageIndex> for Gltf
+impl std::ops::Index<ImageIndex> for Gltf {
+    type Output = GltfImage;
+    fn index(&self, index: ImageIndex) -> &Self::Output {
+        &self.images[index.as_usize()]
+    }
+}
+
+//ip Index<TextureIndex> for Gltf
+impl std::ops::Index<TextureIndex> for Gltf {
+    type Output = GltfTexture;
+    fn index(&self, index: TextureIndex) -> &Self::Output {
+        &self.textures[index.as_usize()]
     }
 }
 

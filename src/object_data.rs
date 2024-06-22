@@ -9,7 +9,29 @@ use crate::{AccessorIndex, BufferIndex, BufferUsage, MeshIndex, NodeIndex};
 
 //a ObjectData
 //tp ObjectData
+/// The type that is used to construct model3d_base from a Gltf
 ///
+/// The objects from the Gltf that are required by the client must be added to this, so that
+/// the node hierarchy can be interrogated to determine which buffers,
+/// views, accessors, meshes, images, samples, and textures are
+/// required
+///
+/// Once the ojbects are added the uses must be derived (no more objects can be added at this point).
+///
+/// Once derived the model3d_base::Buffer required must be generated;
+/// then the model3d_base::BufferData; then the
+/// model3d_base::BufferAccessor. These generate Vec of the relevant
+/// types, which must remain live until any object is made into an
+/// Instantiable; the [ObjectData] maintains indiices into these Vec
+/// for the Gltf buffers (etc) that are used by the required objects.
+///
+/// Then the Vertices are created; these borrow from the previous Vec
+/// of Buffer-related structures
+///
+/// Finally a model3d_base::Object can be created, from which the
+/// client can create a model3d_base::Instantiable; at this point the
+/// buffer data and vertices can be dropped (if the
+/// model3d_base::Renderable permits it)
 #[derive(Debug)]
 pub struct ObjectData {
     /// Nodes used in the object; this must contain all the mesh nodes (but not
@@ -29,15 +51,20 @@ pub struct ObjectData {
     /// the range of it that is used
     buffers: Vec<BufferUsage>,
     /// For all meshes, if used Some(array of Vertices index for each
-    /// primitive); same size as json_value.meshes
+    /// primitive); same size as gltf.meshes
     meshes: Vec<Option<Vec<Option<usize>>>>,
-    /// For each accessor, the index into the accessors array (if used and it
-    /// worked)
+    /// For each accessor, the index into the Vec<BufferAccessor> (if used and it
+    /// worked); same size as gltf.buffer_views
     accessors: Vec<Option<usize>>,
+    /// For each image in the Fltf, the index into the Vec<> array (if used and it
+    /// worked)
+    images: Vec<Option<usize>>,
 }
 
+//ip ObjectData
 impl ObjectData {
     //cp new
+    /// Create a new [ObjectData]
     pub fn new(gltf: &Gltf) -> Self {
         let num_buffers = gltf.buffers().len();
         let num_meshes = gltf.meshes().len();
@@ -48,12 +75,14 @@ impl ObjectData {
         let buffers = vec![Default::default(); num_buffers];
         let meshes = vec![Default::default(); num_meshes];
         let accessors = vec![Default::default(); num_accessors];
+        let images = vec![];
         Self {
             nodes,
             joints,
             buffers,
             meshes,
             accessors,
+            images,
         }
     }
 
@@ -73,6 +102,7 @@ impl ObjectData {
             self.nodes.push(node);
         }
     }
+
     //mp add_object
     /// Add an object to the ObjectData; adds all the nodes in the hierarchy of
     /// the specified node
@@ -353,11 +383,11 @@ impl ObjectData {
         R: Renderable + ?Sized,
     {
         let mut vertices = vec![];
-        for i in 0..self.meshes.len() {
-            if self.meshes[i].is_none() {
+        for mi in 0..self.meshes.len() {
+            if self.meshes[mi].is_none() {
                 continue;
             }
-            let i: MeshIndex = i.into();
+            let i: MeshIndex = mi.into();
             let mesh = &gltf[i];
             for (pi, p) in mesh.primitives().iter().enumerate() {
                 let Some(ia) = p.indices() else {
@@ -392,7 +422,7 @@ impl ObjectData {
                 }
                 let primitve_v = vertices.len();
                 vertices.push(v);
-                self.meshes[pi].as_mut().unwrap()[pi] = Some(primitve_v);
+                self.meshes[mi].as_mut().unwrap()[pi] = Some(primitve_v);
             }
         }
 
