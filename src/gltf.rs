@@ -20,6 +20,39 @@ pub struct Gltf {
     nh_index: Vec<usize>,
 }
 
+//ip Index<NodeIndex> for Gltf
+impl std::ops::Index<NodeIndex> for Gltf {
+    type Output = GltfNode;
+    fn index(&self, index: NodeIndex) -> &Self::Output {
+        &self.json_value.nodes()[index.as_usize()]
+    }
+}
+
+//ip Index<AccessorIndex> for Gltf
+impl std::ops::Index<AccessorIndex> for Gltf {
+    type Output = GltfAccessor;
+    fn index(&self, index: AccessorIndex) -> &Self::Output {
+        &self.json_value.buffer_accessors()[index.as_usize()]
+    }
+}
+
+//ip Index<ViewIndex> for Gltf
+impl std::ops::Index<ViewIndex> for Gltf {
+    type Output = GltfBufferView;
+    fn index(&self, index: ViewIndex) -> &Self::Output {
+        &self.json_value.buffer_views()[index.as_usize()]
+    }
+}
+
+//ip Index<MeshIndex> for Gltf
+impl std::ops::Index<MeshIndex> for Gltf {
+    type Output = GltfMesh;
+    fn index(&self, index: MeshIndex) -> &Self::Output {
+        &self.json_value.meshes()[index.as_usize()]
+    }
+}
+
+//ip Gltf
 impl Gltf {
     //ap nh_index
     pub fn nh_index(&self, node: NodeIndex) -> usize {
@@ -122,37 +155,5 @@ impl Gltf {
     /// If the node is not found then return None
     pub fn get_node(&self, name: &str) -> Option<NodeIndex> {
         GltfNode::get_named(self.json_value.nodes(), name)
-    }
-}
-
-//ip Index<NodeIndex> for Gltf
-impl std::ops::Index<NodeIndex> for Gltf {
-    type Output = GltfNode;
-    fn index(&self, index: NodeIndex) -> &Self::Output {
-        &self.json_value.nodes()[index.as_usize()]
-    }
-}
-
-//ip Index<AccessorIndex> for Gltf
-impl std::ops::Index<AccessorIndex> for Gltf {
-    type Output = GltfAccessor;
-    fn index(&self, index: AccessorIndex) -> &Self::Output {
-        &self.json_value.buffer_accessors()[index.as_usize()]
-    }
-}
-
-//ip Index<ViewIndex> for Gltf
-impl std::ops::Index<ViewIndex> for Gltf {
-    type Output = GltfBufferView;
-    fn index(&self, index: ViewIndex) -> &Self::Output {
-        &self.json_value.buffer_views()[index.as_usize()]
-    }
-}
-
-//ip Index<MeshIndex> for Gltf
-impl std::ops::Index<MeshIndex> for Gltf {
-    type Output = GltfMesh;
-    fn index(&self, index: MeshIndex) -> &Self::Output {
-        &self.json_value.meshes()[index.as_usize()]
     }
 }
