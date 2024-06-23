@@ -6,6 +6,7 @@ use crate::try_buf_parse_base64;
 use crate::Gltf;
 use crate::Result;
 use crate::{AccessorIndex, BufferIndex, BufferUsage, MeshIndex, NodeIndex};
+use crate::{ODAccIndex, ODVerticesIndex};
 
 //a ObjectData
 //tp ObjectData
@@ -50,15 +51,60 @@ pub struct ObjectData {
     /// json_value. which maps a Json buffer to
     /// the range of it that is used
     buffers: Vec<BufferUsage>,
-    /// For all meshes, if used Some(array of Vertices index for each
-    /// primitive); same size as gltf.meshes
-    meshes: Vec<Option<Vec<Option<usize>>>>,
     /// For each accessor, the index into the Vec<BufferAccessor> (if used and it
     /// worked); same size as gltf.buffer_views
-    accessors: Vec<Option<usize>>,
+    accessors: Vec<Option<ODAccIndex>>,
+    /// For all meshes, if used Some(array of Vertices index for each
+    /// primitive); same size as gltf.meshes
+    meshes: Vec<Option<Vec<Option<ODVerticesIndex>>>>,
     /// For each image in the Fltf, the index into the Vec<> array (if used and it
     /// worked)
     images: Vec<Option<usize>>,
+}
+
+//ip Index<BufferIndex> for ObjectData
+impl std::ops::Index<BufferIndex> for ObjectData {
+    type Output = BufferUsage;
+    fn index(&self, index: BufferIndex) -> &Self::Output {
+        &self.buffers[index.as_usize()]
+    }
+}
+
+//ip IndexMut<BufferIndex> for ObjectData
+impl std::ops::IndexMut<BufferIndex> for ObjectData {
+    fn index_mut(&mut self, index: BufferIndex) -> &mut Self::Output {
+        &mut self.buffers[index.as_usize()]
+    }
+}
+
+//ip Index<AccessorIndex> for ObjectData
+impl std::ops::Index<AccessorIndex> for ObjectData {
+    type Output = Option<ODAccIndex>;
+    fn index(&self, index: AccessorIndex) -> &Self::Output {
+        &self.accessors[index.as_usize()]
+    }
+}
+
+//ip IndexMut<AccessorIndex> for ObjectData
+impl std::ops::IndexMut<AccessorIndex> for ObjectData {
+    fn index_mut(&mut self, index: AccessorIndex) -> &mut Self::Output {
+        &mut self.accessors[index.as_usize()]
+    }
+}
+
+//ip Index<MeshIndex> for ObjectData
+impl std::ops::Index<MeshIndex> for ObjectData {
+    type Output = Option<Vec<Option<ODVerticesIndex>>>;
+    fn index(&self, index: MeshIndex) -> &Self::Output {
+        &self.meshes[index.as_usize()]
+    }
+}
+
+//ip IndexMut<MeshIndex> for ObjectData
+impl std::ops::IndexMut<MeshIndex> for ObjectData {
+    fn index_mut(&mut self, index: MeshIndex) -> &mut Self::Output {
+        &mut self.meshes[index.as_usize()]
+    }
 }
 
 //ip ObjectData
@@ -84,6 +130,11 @@ impl ObjectData {
             accessors,
             images,
         }
+    }
+
+    //ap first_buffer
+    fn first_buffer(&mut self) -> Option<&mut BufferUsage> {
+        self.buffers.get_mut(0)
     }
 
     //mi add_joint_node
@@ -118,10 +169,11 @@ impl ObjectData {
     //mp derive_uses
     /// Fill out the meshes and buffer regions that are used
     pub fn derive_uses(&mut self, gltf: &Gltf) {
-        for n in &self.nodes {
-            let node = &gltf[*n];
+        for n in 0..self.nodes.len() {
+            let ni: NodeIndex = n.into();
+            let node = &gltf[ni];
             if let Some(node_mesh) = node.mesh() {
-                let mesh = &mut self.meshes[node_mesh.as_usize()];
+                let mesh = &mut self[node_mesh];
                 if mesh.is_none() {
                     let num_primitives = gltf[node_mesh].primitives().len();
                     *mesh = Some(vec![None; num_primitives]);
@@ -130,8 +182,9 @@ impl ObjectData {
         }
         let mut accessors = vec![];
         for m in 0..self.meshes.len() {
-            if self.meshes[m].is_some() {
-                let mesh = &gltf.meshes()[m];
+            let mi: MeshIndex = m.into();
+            if self[mi].is_some() {
+                let mesh = &gltf[mi];
                 for p in mesh.primitives() {
                     if let Some(a) = p.indices() {
                         accessors.push((true, a));
@@ -165,7 +218,7 @@ impl ObjectData {
         byte_start: usize,
         byte_length: usize,
     ) {
-        self.buffers[buffer.as_usize()].use_buffer(as_index, byte_start, byte_length);
+        self[buffer].use_buffer(as_index, byte_start, byte_length);
     }
 
     //mp uses_buffer_zero
@@ -201,18 +254,21 @@ impl ObjectData {
     {
         let mut result = vec![];
         let mut used_opt_0 = false;
-        if self.buffers.len() > 0 && self.buffers[0].is_used() && opt_buffer_0.is_some() {
-            result.push(opt_buffer_0.unwrap());
-            used_opt_0 = true;
-            self.buffers[0].set_buffer_index(0);
+        if let Some(b) = self.first_buffer() {
+            if b.is_used() && opt_buffer_0.is_some() {
+                result.push(opt_buffer_0.unwrap());
+                used_opt_0 = true;
+                b.set_buffer_index(0.into());
+            }
         }
         for i in 0..self.buffers.len() {
-            let buffer = gltf.take_buffer_data(i.into());
-            if !self.buffers[i].is_used() {
+            let bi: BufferIndex = i.into();
+            let buffer = gltf.take_buffer_data(bi);
+            if !self[bi].is_used() {
                 continue;
             }
             if i > 0 || !used_opt_0 {
-                self.buffers[0].set_buffer_index(result.len());
+                self[bi].set_buffer_index(result.len().into());
                 result.push(buf_parse(buffer.uri(), buffer.byte_length())?);
             }
         }
@@ -259,22 +315,22 @@ impl ObjectData {
     {
         let mut buffer_data = vec![];
         for i in 0..self.buffers.len() {
-            if !self.buffers[i].is_used() {
+            let bi: BufferIndex = i.into();
+            if !self[bi].is_used() {
                 continue;
             }
-            let buffer_index = self.buffers[i].buffer_index();
-            let b = buffer(buffer_index);
-            if self.buffers[i].has_index_data() {
-                self.buffers[i].set_buffer_data(true, buffer_data.len());
-                let byte_offset = self.buffers[i].index_data().start;
-                let byte_length = self.buffers[i].index_data().end - byte_offset;
+            let b = buffer(self[bi].buffer_index().as_usize());
+            if self[bi].has_index_data() {
+                self[bi].set_buffer_data(true, buffer_data.len().into());
+                let byte_offset = self[bi].index_data().start;
+                let byte_length = self[bi].index_data().end - byte_offset;
                 let bd = model3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
                 buffer_data.push(bd);
             }
-            if self.buffers[i].has_vertex_data() {
-                self.buffers[i].set_buffer_data(false, buffer_data.len());
-                let byte_offset = self.buffers[i].vertex_data().start;
-                let byte_length = self.buffers[i].vertex_data().end - byte_offset;
+            if self[bi].has_vertex_data() {
+                self[bi].set_buffer_data(false, buffer_data.len().into());
+                let byte_offset = self[bi].vertex_data().start;
+                let byte_length = self[bi].vertex_data().end - byte_offset;
                 let bd = model3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
                 buffer_data.push(bd);
             }
@@ -297,8 +353,7 @@ impl ObjectData {
         let ba = &gltf[acc];
         let bv = ba.buffer_view().unwrap();
         let bv = &gltf[bv];
-        let buffer = bv.buffer();
-        let buffer = &self.buffers[buffer.as_usize()];
+        let buffer = &self[bv.buffer()];
         let data = {
             if is_index {
                 buffer.index_bd()
@@ -306,7 +361,7 @@ impl ObjectData {
                 buffer.vertex_bd()
             }
         };
-        let data = buffer_data(data);
+        let data = buffer_data(data.as_usize());
         let byte_offset = ba.byte_offset() + bv.byte_offset() - (data.byte_offset as usize);
         let byte_stride = bv.byte_stride(ba.ele_byte_size());
         let count = {
@@ -343,26 +398,26 @@ impl ObjectData {
     {
         let mut buffer_accessors = vec![];
         for i in 0..self.meshes.len() {
-            if self.meshes[i].is_none() {
+            let mi: MeshIndex = i.into();
+            if self[mi].is_none() {
                 continue;
             }
-            let i: MeshIndex = i.into();
-            let mesh = &gltf[i];
+            let mesh = &gltf[mi];
             for p in mesh.primitives() {
                 if let Some(ia) = p.indices() {
-                    if self.accessors[ia.as_usize()].is_some() {
+                    if self[ia].is_some() {
                         continue;
                     }
                     let b = self.make_accessor(gltf, buffer_data, true, ia);
-                    self.accessors[ia.as_usize()] = Some(buffer_accessors.len());
+                    self[ia] = Some(buffer_accessors.len().into());
                     buffer_accessors.push(b);
                 }
                 for (_, va) in p.attributes() {
-                    if self.accessors[va.as_usize()].is_some() {
+                    if self[*va].is_some() {
                         continue;
                     }
                     let b = self.make_accessor(gltf, buffer_data, false, *va);
-                    self.accessors[va.as_usize()] = Some(buffer_accessors.len());
+                    self[*va] = Some(buffer_accessors.len().into());
                     buffer_accessors.push(b);
                 }
             }
@@ -383,12 +438,12 @@ impl ObjectData {
         R: Renderable + ?Sized,
     {
         let mut vertices = vec![];
-        for mi in 0..self.meshes.len() {
-            if self.meshes[mi].is_none() {
+        for i in 0..self.meshes.len() {
+            let mi: MeshIndex = i.into();
+            if self[mi].is_none() {
                 continue;
             }
-            let i: MeshIndex = mi.into();
-            let mesh = &gltf[i];
+            let mesh = &gltf[mi];
             for (pi, p) in mesh.primitives().iter().enumerate() {
                 let Some(ia) = p.indices() else {
                     continue;
@@ -403,26 +458,26 @@ impl ObjectData {
                 let Some(pa) = pa else {
                     continue;
                 };
-                let Some(ia) = self.accessors[ia.as_usize()] else {
+                let Some(ia) = self[ia] else {
                     continue;
                 };
-                let Some(pa) = self.accessors[pa.as_usize()] else {
+                let Some(pa) = self[*pa] else {
                     continue;
                 };
-                let indices = buffer_accessor(ia);
-                let positions = buffer_accessor(pa);
+                let indices = buffer_accessor(ia.as_usize());
+                let positions = buffer_accessor(pa.as_usize());
                 let mut v = model3d_base::Vertices::new(indices, positions);
                 for (va, vpa) in p.attributes() {
                     if *va == model3d_base::VertexAttr::Position {
                         continue;
                     }
-                    if let Some(vpa) = self.accessors[vpa.as_usize()] {
-                        v.add_attr(*va, buffer_accessor(vpa));
+                    if let Some(vpa) = self[*vpa] {
+                        v.add_attr(*va, buffer_accessor(vpa.as_usize()));
                     }
                 }
                 let primitve_v = vertices.len();
                 vertices.push(v);
-                self.meshes[mi].as_mut().unwrap()[pi] = Some(primitve_v);
+                self[mi].as_mut().unwrap()[pi] = Some(primitve_v.into());
             }
         }
 
@@ -452,7 +507,7 @@ impl ObjectData {
                 continue;
             };
             let gltf_mesh = &gltf[mesh];
-            let Some(mp) = &self.meshes[mesh.as_usize()] else {
+            let Some(mp) = &self[mesh] else {
                 continue;
             };
             let mut mesh = model3d_base::Mesh::new();
@@ -466,7 +521,7 @@ impl ObjectData {
                 let mat_ind = 0;
                 let primitive = model3d_base::Primitive::new(
                     gltf_prim.primitive_type(),
-                    vertices_index,
+                    vertices_index.as_usize(),
                     0,
                     index_count,
                     mat_ind,

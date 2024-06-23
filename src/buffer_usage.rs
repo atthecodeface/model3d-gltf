@@ -1,6 +1,8 @@
 //a Imports
 use std::ops::Range;
 
+use crate::{ODBufDataIndex, ODBufIndex};
+
 //a BufferUsage
 //tp BufferUsage
 /// This type monitors the usage of a buffer - which range of bytes
@@ -17,11 +19,11 @@ pub struct BufferUsage {
     /// The range of the buffer used for index data
     index_data: Range<usize>,
     /// The index into the user buffer Vec that this refers to
-    buffer_index: usize,
+    buffer_index: ODBufIndex,
     /// The index into the user BufferData Vec that the vertex data range uses
-    vertex_bd: Option<usize>,
+    vertex_bd: Option<ODBufDataIndex>,
     /// The index into the user BufferData Vec that the index data range uses
-    index_bd: Option<usize>,
+    index_bd: Option<ODBufDataIndex>,
 }
 
 //ip BufferUsage
@@ -46,7 +48,7 @@ impl BufferUsage {
 
     //ap buffer_index
     /// Return the buffer index
-    pub fn buffer_index(&self) -> usize {
+    pub fn buffer_index(&self) -> ODBufIndex {
         self.buffer_index
     }
 
@@ -65,14 +67,14 @@ impl BufferUsage {
     //ap vertex_bd
     /// Return the buffer data index used by the range
     #[track_caller]
-    pub fn vertex_bd(&self) -> usize {
+    pub fn vertex_bd(&self) -> ODBufDataIndex {
         self.vertex_bd.unwrap()
     }
 
     //ap index_bd
     /// Return the buffer data index used by the range
     #[track_caller]
-    pub fn index_bd(&self) -> usize {
+    pub fn index_bd(&self) -> ODBufDataIndex {
         self.index_bd.unwrap()
     }
 
@@ -98,12 +100,12 @@ impl BufferUsage {
     }
 
     //mp set_buffer_index
-    pub fn set_buffer_index(&mut self, buffer_index: usize) {
+    pub fn set_buffer_index(&mut self, buffer_index: ODBufIndex) {
         self.buffer_index = buffer_index;
     }
 
     //mp set_buffer_data
-    pub fn set_buffer_data(&mut self, as_index: bool, buffer_data_index: usize) {
+    pub fn set_buffer_data(&mut self, as_index: bool, buffer_data_index: ODBufDataIndex) {
         if as_index {
             self.index_bd = Some(buffer_data_index);
         } else {

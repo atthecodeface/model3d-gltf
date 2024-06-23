@@ -44,3 +44,8 @@ index_type!(BufferIndex);
 index_type!(AccessorIndex);
 index_type!(ImageIndex);
 index_type!(TextureIndex);
+
+index_type!(ODBufIndex);
+index_type!(ODBufDataIndex);
+index_type!(ODAccIndex);
+index_type!(ODVerticesIndex);
