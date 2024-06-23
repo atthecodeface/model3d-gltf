@@ -5,7 +5,7 @@ use model3d_base::{BufferAccessor, BufferData, ByteBuffer, Renderable};
 use crate::try_buf_parse_base64;
 use crate::Gltf;
 use crate::Result;
-use crate::{AccessorIndex, BufferIndex, BufferUsage, MeshIndex, NodeIndex};
+use crate::{AccessorIndex, BufferIndex, BufferUsage, MeshIndex, NodeIndex, PrimitiveIndex};
 use crate::{ODAccIndex, ODVerticesIndex};
 
 //a ObjectData
@@ -54,8 +54,12 @@ pub struct ObjectData {
     /// For each accessor, the index into the Vec<BufferAccessor> (if used and it
     /// worked); same size as gltf.buffer_views
     accessors: Vec<Option<ODAccIndex>>,
-    /// For all meshes, if used Some(array of Vertices index for each
+    /// For all meshes, if used Some(array of possible Vertices index for each
     /// primitive); same size as gltf.meshes
+    ///
+    /// This maps each primitive that is used in each mesh that is
+    /// used (in the order of the Gltf fiile itself) to a client
+    /// Vertices index (which must be the same index as in the model3d_base::Object
     meshes: Vec<Option<Vec<Option<ODVerticesIndex>>>>,
     /// For each image in the Fltf, the index into the Vec<> array (if used and it
     /// worked)
@@ -159,7 +163,7 @@ impl ObjectData {
     /// the specified node
     pub fn add_object(&mut self, gltf: &Gltf, node: NodeIndex) {
         let nh_index = gltf.nh_index(node);
-        for eo in gltf.node_hierarchy().iter_from(nh_index) {
+        for eo in gltf.node_hierarchy().iter_from(nh_index.as_usize()) {
             if let NodeEnumOp::Push((_, n), _) = eo {
                 self.add_node(*n);
             }
@@ -226,7 +230,7 @@ impl ObjectData {
     ///
     /// This is only valid after *derive_uses* has been invoked
     pub fn uses_buffer_zero(&self) -> bool {
-        if let Some(b) = self.buffers.get(0) {
+        if let Some(b) = self.buffers.first() {
             b.is_used()
         } else {
             false
@@ -503,30 +507,31 @@ impl ObjectData {
         }
         for n in &self.nodes {
             let node = &gltf[*n];
-            let Some(mesh) = node.mesh() else {
+            let Some(mi) = node.mesh() else {
                 continue;
             };
-            let gltf_mesh = &gltf[mesh];
-            let Some(mp) = &self[mesh] else {
+            let gltf_mesh = &gltf[mi];
+            let Some(od_mesh_prims) = &self[mi] else {
                 continue;
             };
             let mut mesh = model3d_base::Mesh::new();
-            for pi in 0..mp.len() {
-                let Some(vertices_index) = mp[pi] else {
+            for (m_pi, opt_od_vi) in od_mesh_prims.iter().enumerate() {
+                let m_pi: PrimitiveIndex = m_pi.into();
+                let Some(od_vi) = *opt_od_vi else {
                     continue;
                 };
-                let gltf_prim = &gltf_mesh.primitives()[pi];
+                let gltf_prim = &gltf_mesh[m_pi];
                 let ia = gltf_prim.indices().unwrap();
                 let index_count = gltf[ia].count() as u32;
                 let mat_ind = 0;
                 let primitive = model3d_base::Primitive::new(
                     gltf_prim.primitive_type(),
-                    vertices_index.as_usize(),
+                    od_vi.as_usize(),
                     0,
                     index_count,
                     mat_ind,
                 );
-                eprintln!("Add mesh {mesh:?} {pi}");
+                eprintln!("Add mesh {mesh:?} {m_pi}");
                 mesh.add_primitive(primitive);
             }
             object.add_component(None, Some(*node.global_transformation()), mesh);

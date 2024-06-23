@@ -1,5 +1,4 @@
 //a Imports
-use serde;
 use serde::{Deserialize, Deserializer};
 
 use crate::{BufferIndex, ViewIndex};
@@ -55,7 +54,7 @@ where
         "MAT2" => Ok(2),
         "MAT3" => Ok(9),
         "MAT4" => Ok(16),
-        _ => Err(format!("Unknown accessor type {s}")).into(),
+        _ => Err(format!("Unknown accessor type {s}")),
     }
     .map_err(serde::de::Error::custom)
 }

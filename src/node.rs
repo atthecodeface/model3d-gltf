@@ -10,7 +10,6 @@
 // 'joints' fields) which are referenced by the same scenes as this node is
 // (through its hierarchy) referenced from. If this
 //
-use serde;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
@@ -54,13 +53,14 @@ impl GltfNode {
                 "Node {n} has a skin but no mesh which is illegal",
             )));
         }
-        if self.matrix.is_some() {
-            if self.rotation.is_some() || self.translation.is_some() || self.scale.is_some() {
-                return Err(Error::BadJson(format!(
-                    "Node {n} has a matrix and some TRS",
-                )));
-            }
+        if self.matrix.is_some()
+            && (self.rotation.is_some() || self.translation.is_some() || self.scale.is_some())
+        {
+            return Err(Error::BadJson(format!(
+                "Node {n} has a matrix and some TRS",
+            )));
         }
+
         if self.weights.is_some() {
             return Err(Error::BadJson(format!(
                 "Node {n} has morpht target weights that are not supported",
@@ -75,15 +75,14 @@ impl GltfNode {
             self.local_transformation.from_mat4(matrix);
         } else {
             if let Some(scale) = self.scale {
-                self.local_transformation.set_scale(scale.into());
+                self.local_transformation.set_scale(scale);
             }
             if let Some(rotation) = self.rotation {
                 let rotation = (rotation[3], rotation[0], rotation[1], rotation[2]).into();
                 self.local_transformation.set_rotation(rotation);
             }
             if let Some(translation) = self.translation {
-                self.local_transformation
-                    .set_translation(translation.into());
+                self.local_transformation.set_translation(translation);
             }
         }
         self.global_transformation

@@ -1,10 +1,12 @@
-use serde;
+//a Imports
 use serde::Deserialize;
-use serde_json::Value as JsonValue;
 
 use crate::Named;
-use crate::{ImageIndex, TextureIndex};
+use crate::{ImageIndex, SamplerIndex, TextureIndex};
 
+//a GltfTexture
+//tp GltfTexture
+/// A type representing a Gltf Texture -
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct GltfTexture {
@@ -13,11 +15,12 @@ pub struct GltfTexture {
     /// Image index (source)
     #[serde(rename = "source")]
     pub image: ImageIndex,
-    /// Sampler
+    /// Sampler index
     #[serde(rename = "sampler")]
-    pub sampler: JsonValue,
+    pub sampler: SamplerIndex,
 }
 
+//ip Named for GltfTexture
 impl Named for GltfTexture {
     type Index = TextureIndex;
     fn is_name(&self, name: &str) -> bool {

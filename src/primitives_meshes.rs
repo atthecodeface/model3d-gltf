@@ -1,10 +1,14 @@
+//a Imports
 use std::collections::HashMap;
 
-use serde;
 use serde::{Deserialize, Deserializer};
 
-use crate::AccessorIndex;
+use crate::{AccessorIndex, MaterialIndex, PrimitiveIndex};
 
+//a Deserializer functions
+//fi attr_to_attr
+/// Map an array of Gltf string attribute name/value pairs to a Vec of
+/// tuples of model3d_base::VertexAttr and AccessorIndex
 fn attr_to_attr<'de, D>(
     de: D,
 ) -> std::result::Result<Vec<(model3d_base::VertexAttr, AccessorIndex)>, D::Error>
@@ -33,6 +37,8 @@ where
     Ok(r)
 }
 
+//fi primitive_type
+/// Map a Gltf primitive type specified by an integer to a model3d_base::PrimitiveType
 fn primitive_type<'de, D>(de: D) -> std::result::Result<model3d_base::PrimitiveType, D::Error>
 where
     D: Deserializer<'de>,
@@ -56,9 +62,15 @@ where
     Ok(pt)
 }
 
+//fi pt_triangles
+/// Return the default type for a Gltf primitive type - Triangles
 fn pt_triangles() -> model3d_base::PrimitiveType {
     model3d_base::PrimitiveType::Triangles
 }
+
+//a GltfPrimitive
+//tp GltfPrimitive
+/// A Gltf primitive, as deserialized from the Gltf Json
 #[derive(Debug, Deserialize)]
 pub struct GltfPrimitive {
     // This must be a map from attribute name to accessor index
@@ -73,24 +85,42 @@ pub struct GltfPrimitive {
     mode: model3d_base::PrimitiveType,
     // optional
     #[serde(default)]
-    material: Option<usize>,
+    material: Option<MaterialIndex>,
     // optional - if not present then drawArrays should be used
     #[serde(default)]
     indices: Option<AccessorIndex>,
     // optional: targets
     // optional: extensions, extras
 }
+
+//ip GltfPrimitive
 impl GltfPrimitive {
+    //ap indices
+    /// Return the AccessorIndex for the indices of the primitive - or
+    /// None if one was not specified (drawArrays should be used to
+    /// render the primitive)
     pub fn indices(&self) -> Option<AccessorIndex> {
         self.indices
     }
+
+    //ap primitive_type
+    /// Return the model3d_base::PrimitiveType of the primitive
+    /// (TriangleStrip, etc)
     pub fn primitive_type(&self) -> model3d_base::PrimitiveType {
         self.mode
     }
+
+    //ap attributes
+    /// Return a slice of tuples of model3d_base::VertexAttr and
+    /// AccessorIndex from the Gltf for the primitive
     pub fn attributes(&self) -> &[(model3d_base::VertexAttr, AccessorIndex)] {
         &self.attributes
     }
-    pub fn material(&self) -> Option<usize> {
+
+    //ap material
+    /// Return the
+    /// AccessorIndex from the Gltf for the primitive
+    pub fn material(&self) -> Option<MaterialIndex> {
         self.material
     }
 }
@@ -106,11 +136,20 @@ pub struct GltfMesh {
     // optional: weights (ignored as morph targets are not supported)
     // optional: name, extensions, extras
 }
+
 impl GltfMesh {
     pub fn name(&self) -> &str {
         &self.name
     }
     pub fn primitives(&self) -> &[GltfPrimitive] {
         &self.primitives
+    }
+}
+
+//ip Index<PrimitiveIndex> for GltfMesh
+impl std::ops::Index<PrimitiveIndex> for GltfMesh {
+    type Output = GltfPrimitive;
+    fn index(&self, index: PrimitiveIndex) -> &Self::Output {
+        &self.primitives[index.as_usize()]
     }
 }

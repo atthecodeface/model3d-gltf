@@ -86,9 +86,7 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
     /// Do not at this point attempt to validate the Json to be Gltf Json
     fn read_json(&mut self) -> Result<()> {
         let mut hdr = [0; 8];
-        self.file
-            .read_exact(&mut hdr)
-            .map_err(|e| Error::GlbJsonIo(e))?;
+        self.file.read_exact(&mut hdr).map_err(Error::GlbJsonIo)?;
         if hdr[4..8] != [0x4a, 0x53, 0x4f, 0x4e] {
             return Err(Error::GlbJsonHdr);
         }
@@ -124,7 +122,7 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
         BR: Fn(&mut F, usize) -> std::result::Result<Option<B>, std::io::Error>,
     {
         let mut hdr = [0; 8];
-        let n = self.file.read(&mut hdr).map_err(|e| Error::GlbJsonIo(e))?;
+        let n = self.file.read(&mut hdr).map_err(Error::GlbJsonIo)?;
         if n == 0 {
             return Ok(());
         }
@@ -136,7 +134,7 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
             | ((hdr[2] as u32) << 16)
             | ((hdr[3] as u32) << 24);
         let bin_byte_length = bin_byte_length as usize;
-        self.buffer_0 = buf_reader(self.file, bin_byte_length).map_err(|e| Error::GlbBinIo(e))?;
+        self.buffer_0 = buf_reader(self.file, bin_byte_length).map_err(Error::GlbBinIo)?;
         Ok(())
     }
 

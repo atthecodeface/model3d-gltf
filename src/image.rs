@@ -1,9 +1,11 @@
-use serde;
+//a Imports
 use serde::Deserialize;
 
 use crate::Named;
 use crate::{ImageIndex, ViewIndex};
 
+//a GltfImage
+//tp GltfImage
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct GltfImage {
@@ -18,6 +20,7 @@ pub struct GltfImage {
     pub buffer_view: ViewIndex,
 }
 
+//ip Named for GltfImage
 impl Named for GltfImage {
     type Index = ImageIndex;
     fn is_name(&self, name: &str) -> bool {

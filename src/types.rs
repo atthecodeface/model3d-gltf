@@ -34,6 +34,8 @@ macro_rules! index_type {
     };
 }
 
+index_type!(NHIndex);
+
 index_type!(MeshIndex);
 index_type!(NodeIndex);
 index_type!(CameraIndex);
@@ -44,6 +46,9 @@ index_type!(BufferIndex);
 index_type!(AccessorIndex);
 index_type!(ImageIndex);
 index_type!(TextureIndex);
+index_type!(MaterialIndex);
+index_type!(SamplerIndex);
+index_type!(PrimitiveIndex);
 
 index_type!(ODBufIndex);
 index_type!(ODBufDataIndex);

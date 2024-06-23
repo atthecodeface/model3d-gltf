@@ -1,9 +1,12 @@
-use serde;
+//a Imports
 use serde::Deserialize;
 
 use crate::Named;
 use crate::{NodeIndex, SceneIndex};
 
+//a GltfScene
+//tp GltfScene
+/// A type that contains the data from a Gltf Json 'Scene'
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct GltfScene {
@@ -14,6 +17,8 @@ pub struct GltfScene {
     /// This can include cameras, lights, etc; each must be a root node id
     pub nodes: Vec<NodeIndex>,
 }
+
+//ip Named for GltfScene
 impl Named for GltfScene {
     type Index = SceneIndex;
     fn is_name(&self, name: &str) -> bool {

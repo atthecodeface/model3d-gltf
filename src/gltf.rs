@@ -1,13 +1,12 @@
 //a Imports
 use model3d_base::hierarchy::Hierarchy;
 use model3d_base::Transformation;
-use serde;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
 use crate::{
-    AccessorIndex, BufferIndex, ImageIndex, MeshIndex, NodeIndex, SceneIndex, TextureIndex,
-    ViewIndex,
+    AccessorIndex, BufferIndex, ImageIndex, MeshIndex, NHIndex, NodeIndex, SceneIndex,
+    TextureIndex, ViewIndex,
 };
 use crate::{Error, Named, Result};
 use crate::{
@@ -24,29 +23,78 @@ pub struct Gltf {
     /// that the Json is in, and copyright, generator and other such
     /// information
     asset: JsonValue,
+
+    /// All the 'buffers' from the Json file, in gltf order; this is
+    /// the URI but not any client-side buffer representation
     buffers: Vec<GltfBuffer>,
+
+    /// All the 'bufferViews' from the Json file, in gltf order;
+    /// buffers are referred to by BufferIndex into the 'buffers'
+    /// property
     #[serde(rename = "bufferViews")]
     buffer_views: Vec<GltfBufferView>,
+
+    /// All the 'accessors' from the Json file, in gltf order;
+    /// buffer views are referred to by ViewIndex into the 'buffer_views'
+    /// property
     accessors: Vec<GltfAccessor>,
-    meshes: Vec<GltfMesh>,
-    nodes: Vec<GltfNode>,
-    scenes: Vec<GltfScene>,
-    scene: Option<SceneIndex>,
+
+    /// All the 'materials' from the Json file, in gltf order
+    /// Currently not filled out
     materials: Vec<JsonValue>,
+
+    /// All the 'meshes' from the Json file, in gltf order; the
+    /// primitives refer to accessors and materials by AccessorIndex
+    /// and MateriaIndex into the relevant properties
+    meshes: Vec<GltfMesh>,
+
+    /// All the 'nodes' from the Json file, representing nodes in a
+    /// hierarchy of meshes AND nodes in a skeleton - gltf conflates
+    /// the two (plus cameras, lights, etc)
+    nodes: Vec<GltfNode>,
+
+    /// The default scene to be presented by the gltf
+    scene: Option<SceneIndex>,
+
+    /// The scenes in the gltf; each refers to an array of NodeIndex
+    /// that are the roots of the (distinct) trees that are to be
+    /// rendered for a scene
+    scenes: Vec<GltfScene>,
+
+    /// The camers in the gltf; currently unfilled
     cameras: Vec<JsonValue>,
+
+    /// The image descriptors from the Json file; this is the URI or
+    /// buffer views, not the underlying image data
     images: Vec<GltfImage>,
+
+    /// The sampler descriptors from the Json file
     samplers: JsonValue,
+
+    /// The texture descriptors from the Json file; these refer to
+    /// SamplerIndex and ImageIndex
     textures: Vec<GltfTexture>,
+
+    /// The skin (skeleton) descriptors from the Json file
     skins: Vec<JsonValue>,
+
+    /// The animations in the Json file
     animations: JsonValue,
 
     /// The hierarchy of nodes
+    ///
+    /// This is generated after the Json file is read; Gltf requries
+    /// the nodes to form distinct trees (each node is in precisely
+    /// one tree) so a hierarchy will have each NodeInde once as
+    /// either a root or once as the child of a single parent
     #[serde(skip_deserializing)]
     node_hierarchy: Hierarchy<NodeIndex>,
 
+    /// A mapping from NodeIndex to node_hierarchy index
+    ///
     /// Which node hierarchy element a particular NodeIndex corresponds to
     #[serde(skip_deserializing)]
-    nh_index: Vec<usize>,
+    nh_index: Vec<NHIndex>,
 }
 
 //ip Index<NodeIndex> for Gltf
@@ -127,9 +175,10 @@ impl Gltf {
         for acc in &self.accessors {
             let bv_index = acc.buffer_view();
             let Some(bv_index) = bv_index else {
-                return Err(Error::BadJson(format!(
+                return Err(Error::BadJson(
                     "Accessor is not permitted to not specify a BufferView in this GLTF reader"
-                )));
+                        .into(),
+                ));
             };
             if bv_index.as_usize() >= n {
                 return Err(Error::BadJson(format!(
@@ -244,7 +293,7 @@ impl Gltf {
     }
 
     //ap nh_index
-    pub fn nh_index(&self, node: NodeIndex) -> usize {
+    pub fn nh_index(&self, node: NodeIndex) -> NHIndex {
         self.nh_index[node.as_usize()]
     }
 
@@ -262,13 +311,14 @@ impl Gltf {
     //mp gen_node_hierarchy
     // Create nodes (componentts) and objects (somehow)
     pub fn gen_node_hierarchy(&mut self) {
-        if self.node_hierarchy.len() > 0 {
+        if !self.node_hierarchy.is_empty() {
             return;
         }
         let n = self.nodes.len();
-        self.nh_index = vec![0; n];
+        self.nh_index = vec![0.into(); n];
         for i in 0..n {
-            self.nh_index[i] = self.node_hierarchy.add_node(i.into());
+            let ni: NodeIndex = i.into();
+            self.nh_index[i] = self.node_hierarchy.add_node(ni).into();
         }
         for (i, n) in self.nodes.iter().enumerate() {
             for c in n.iter_children() {
@@ -290,10 +340,8 @@ impl Gltf {
                     if has_children {
                         stack.push(*t);
                     }
-                } else {
-                    if has_children {
-                        stack.pop();
-                    }
+                } else if has_children {
+                    stack.pop();
                 }
             }
         }
