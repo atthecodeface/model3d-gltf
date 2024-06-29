@@ -170,7 +170,8 @@ fn simple() -> Result<(), Error> {
         od.gen_buffer_data::<_, _, model3d_base::example_client::Renderable>(&|x| &buffers[x]);
     let buffer_accessors = od.gen_accessors(&gltf, &|x| &buffer_data[x]);
     let vertices = od.gen_vertices(&gltf, &|x| &buffer_accessors[x]);
-    let object = od.gen_object(&gltf, &vertices);
+    let _object: model3d_base::Object<model3d_base::BaseMaterial, _> =
+        od.gen_object(&gltf, &vertices, &[], &[]);
     println!("{od:?}");
     println!("{buffers:?}");
     println!("{buffer_data:?}");

@@ -1,5 +1,10 @@
 use serde::{self, Deserialize};
 
+pub trait Indexable:
+    Sized + std::ops::Deref<Target = usize> + std::ops::DerefMut + std::convert::From<usize>
+{
+    fn as_usize(&self) -> usize;
+}
 macro_rules! index_type {
     ( $t:ident ) => {
         #[derive(Default, Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
@@ -16,9 +21,24 @@ macro_rules! index_type {
                 &mut self.0
             }
         }
+        impl From<$t> for usize {
+            fn from(value: $t) -> usize {
+                value.0
+            }
+        }
         impl From<usize> for $t {
             fn from(value: usize) -> Self {
                 Self(value)
+            }
+        }
+        impl From<$t> for model3d_base::ShortIndex {
+            fn from(value: $t) -> model3d_base::ShortIndex {
+                value.0.into()
+            }
+        }
+        impl From<&$t> for model3d_base::ShortIndex {
+            fn from(value: &$t) -> model3d_base::ShortIndex {
+                value.0.into()
             }
         }
         impl std::fmt::Display for $t {
@@ -26,8 +46,8 @@ macro_rules! index_type {
                 self.0.fmt(f)
             }
         }
-        impl $t {
-            pub fn as_usize(self) -> usize {
+        impl Indexable for $t {
+            fn as_usize(&self) -> usize {
                 self.0
             }
         }
@@ -54,3 +74,6 @@ index_type!(ODBufIndex);
 index_type!(ODBufDataIndex);
 index_type!(ODAccIndex);
 index_type!(ODVerticesIndex);
+index_type!(ODImagesIndex);
+index_type!(ODTexturesIndex);
+index_type!(ODMaterialsIndex);

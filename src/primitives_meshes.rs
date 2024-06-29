@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};
 
-use crate::{AccessorIndex, MaterialIndex, PrimitiveIndex};
+use crate::{AccessorIndex, Indexable, MaterialIndex, PrimitiveIndex};
 
 //a Deserializer functions
 //fi attr_to_attr

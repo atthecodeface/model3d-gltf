@@ -104,7 +104,6 @@ impl<'file, F: std::io::Read, B> GlbLoader<'file, F, B> {
             return Err(Error::GlbJsonLength);
         }
         self.json_value = serde_json::from_str(std::str::from_utf8(&buffer)?)?;
-        dbg!(&self.json_value);
         Ok(())
     }
 

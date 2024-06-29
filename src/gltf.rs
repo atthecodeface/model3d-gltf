@@ -5,12 +5,13 @@ use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
 use crate::{
-    AccessorIndex, BufferIndex, ImageIndex, MeshIndex, NHIndex, NodeIndex, SceneIndex,
-    TextureIndex, ViewIndex,
+    AccessorIndex, BufferIndex, ImageIndex, Indexable, MaterialIndex, MeshIndex, NHIndex,
+    NodeIndex, SceneIndex, TextureIndex, ViewIndex,
 };
 use crate::{Error, Named, Result};
 use crate::{
-    GltfAccessor, GltfBuffer, GltfBufferView, GltfImage, GltfMesh, GltfNode, GltfScene, GltfTexture,
+    GltfAccessor, GltfBuffer, GltfBufferView, GltfImage, GltfMaterial, GltfMesh, GltfNode,
+    GltfScene, GltfTexture,
 };
 
 //a Gltf
@@ -41,11 +42,11 @@ pub struct Gltf {
 
     /// All the 'materials' from the Json file, in gltf order
     /// Currently not filled out
-    materials: Vec<JsonValue>,
+    materials: Vec<GltfMaterial>,
 
     /// All the 'meshes' from the Json file, in gltf order; the
     /// primitives refer to accessors and materials by AccessorIndex
-    /// and MateriaIndex into the relevant properties
+    /// and MaterialIndex into the relevant properties
     meshes: Vec<GltfMesh>,
 
     /// All the 'nodes' from the Json file, representing nodes in a
@@ -145,6 +146,14 @@ impl std::ops::Index<TextureIndex> for Gltf {
     }
 }
 
+//ip Index<MaterialIndex> for Gltf
+impl std::ops::Index<MaterialIndex> for Gltf {
+    type Output = GltfMaterial;
+    fn index(&self, index: MaterialIndex) -> &Self::Output {
+        &self.materials[index.as_usize()]
+    }
+}
+
 //ip Gltf
 impl Gltf {
     //mp validate_buffer_views
@@ -240,6 +249,7 @@ impl Gltf {
     //mp validate
     /// Validate the contents - check indices in range, etc
     pub fn validate(&self) -> Result<()> {
+        dbg!(self);
         self.validate_buffer_views()?;
         self.validate_accessors()?;
         self.validate_nodes()?;

@@ -16,6 +16,8 @@ pub enum GltfError {
     BufferTooShort,
     #[error("Buffer could not be read")]
     BufferRead,
+    #[error("Failed to load image {reason}")]
+    ImageLoad { reason: String },
     #[error("Bad GLB header")]
     GlbHdr,
     #[error("Bad GLB Json header")]

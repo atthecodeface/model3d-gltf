@@ -4,9 +4,15 @@ use model3d_base::{BufferAccessor, BufferData, ByteBuffer, Renderable};
 
 use crate::try_buf_parse_base64;
 use crate::Gltf;
-use crate::Result;
-use crate::{AccessorIndex, BufferIndex, BufferUsage, MeshIndex, NodeIndex, PrimitiveIndex};
-use crate::{ODAccIndex, ODVerticesIndex};
+use crate::{
+    AccessorIndex, BufferIndex, BufferUsage, ImageIndex, MaterialIndex, MeshIndex, NodeIndex,
+    PrimitiveIndex, SamplerIndex, TextureIndex,
+};
+use crate::{Error, Result};
+use crate::{
+    Indexable, ODAccIndex, ODImagesIndex, ODMaterialsIndex, ODTexturesIndex, ODUses,
+    ODVerticesIndex,
+};
 
 //a ObjectData
 //tp ObjectData
@@ -17,7 +23,7 @@ use crate::{ODAccIndex, ODVerticesIndex};
 /// views, accessors, meshes, images, samples, and textures are
 /// required
 ///
-/// Once the ojbects are added the uses must be derived (no more objects can be added at this point).
+/// Once the objects are added the uses must be derived (no more objects can be added at this point).
 ///
 /// Once derived the model3d_base::Buffer required must be generated;
 /// then the model3d_base::BufferData; then the
@@ -37,7 +43,7 @@ use crate::{ODAccIndex, ODVerticesIndex};
 pub struct ObjectData {
     /// Nodes used in the object; this must contain all the mesh nodes (but not
     /// the joint nodes)
-    nodes: Vec<NodeIndex>,
+    nodes_used: Vec<NodeIndex>,
     /// Nodes used in skeletons for the object
     ///
     /// There is no support (as yet) for unskinned meshes that are children of
@@ -46,11 +52,27 @@ pub struct ObjectData {
     /// pose should be used) the mesh is not posed, but placed at its static
     /// positioning given by the hierarchy of nodes from its root node
     #[allow(dead_code)]
-    joints: Vec<NodeIndex>,
+    joints_used: Vec<NodeIndex>,
+    materials_used: ODUses<MaterialIndex, ODMaterialsIndex>,
+
+    /// For each image in the Gltf, the index into the Vec<> array (if used and it
+    /// created the image without error)
+    images_used: ODUses<ImageIndex, ODImagesIndex>,
+
+    /// For each sampler in the Gltf, the index into the Vec<> array (if used and it
+    /// created the image without error)
+    ///
+    /// Actually currently unused
+    samplers_used: ODUses<SamplerIndex, ()>,
+
+    /// For each sampler in the Gltf, the index into the Vec<> array (if used and it
+    /// created the texture without error)
+    textures_used: ODUses<TextureIndex, ODTexturesIndex>,
+
     /// A vec the same size as
     /// json_value. which maps a Json buffer to
     /// the range of it that is used
-    buffers: Vec<BufferUsage>,
+    buffer_usage: Vec<BufferUsage>,
     /// For each accessor, the index into the Vec<BufferAccessor> (if used and it
     /// worked); same size as gltf.buffer_views
     accessors: Vec<Option<ODAccIndex>>,
@@ -61,23 +83,20 @@ pub struct ObjectData {
     /// used (in the order of the Gltf fiile itself) to a client
     /// Vertices index (which must be the same index as in the model3d_base::Object
     meshes: Vec<Option<Vec<Option<ODVerticesIndex>>>>,
-    /// For each image in the Fltf, the index into the Vec<> array (if used and it
-    /// worked)
-    images: Vec<Option<usize>>,
 }
 
 //ip Index<BufferIndex> for ObjectData
 impl std::ops::Index<BufferIndex> for ObjectData {
     type Output = BufferUsage;
     fn index(&self, index: BufferIndex) -> &Self::Output {
-        &self.buffers[index.as_usize()]
+        &self.buffer_usage[index.as_usize()]
     }
 }
 
 //ip IndexMut<BufferIndex> for ObjectData
 impl std::ops::IndexMut<BufferIndex> for ObjectData {
     fn index_mut(&mut self, index: BufferIndex) -> &mut Self::Output {
-        &mut self.buffers[index.as_usize()]
+        &mut self.buffer_usage[index.as_usize()]
     }
 }
 
@@ -120,41 +139,47 @@ impl ObjectData {
         let num_meshes = gltf.meshes().len();
         let num_accessors = gltf.accessors().len();
 
-        let nodes = vec![];
-        let joints = vec![];
-        let buffers = vec![Default::default(); num_buffers];
+        let nodes_used = vec![];
+        let joints_used = vec![];
+        let materials_used = ODUses::new();
+        let textures_used = ODUses::new();
+        let images_used = ODUses::new();
+        let samplers_used = ODUses::new();
+        let buffer_usage = vec![Default::default(); num_buffers];
         let meshes = vec![Default::default(); num_meshes];
         let accessors = vec![Default::default(); num_accessors];
-        let images = vec![];
         Self {
-            nodes,
-            joints,
-            buffers,
+            nodes_used,
+            joints_used,
+            materials_used,
+            textures_used,
+            buffer_usage,
             meshes,
             accessors,
-            images,
+            images_used,
+            samplers_used,
         }
     }
 
     //ap first_buffer
     fn first_buffer(&mut self) -> Option<&mut BufferUsage> {
-        self.buffers.get_mut(0)
+        self.buffer_usage.get_mut(0)
     }
 
     //mi add_joint_node
     /// Add a joint node to the set of nodes used by this Object
     #[allow(dead_code)]
     fn add_joint_node(&mut self, node: NodeIndex) {
-        if !self.joints.contains(&node) {
-            self.joints.push(node);
+        if !self.joints_used.contains(&node) {
+            self.joints_used.push(node);
         }
     }
 
     //mi add_node
     /// Add a node index to the set of nodes used by this Object
     fn add_node(&mut self, node: NodeIndex) {
-        if !self.nodes.contains(&node) {
-            self.nodes.push(node);
+        if !self.nodes_used.contains(&node) {
+            self.nodes_used.push(node);
         }
     }
 
@@ -166,45 +191,6 @@ impl ObjectData {
         for eo in gltf.node_hierarchy().iter_from(nh_index.as_usize()) {
             if let NodeEnumOp::Push((_, n), _) = eo {
                 self.add_node(*n);
-            }
-        }
-    }
-
-    //mp derive_uses
-    /// Fill out the meshes and buffer regions that are used
-    pub fn derive_uses(&mut self, gltf: &Gltf) {
-        for n in 0..self.nodes.len() {
-            let ni: NodeIndex = n.into();
-            let node = &gltf[ni];
-            if let Some(node_mesh) = node.mesh() {
-                let mesh = &mut self[node_mesh];
-                if mesh.is_none() {
-                    let num_primitives = gltf[node_mesh].primitives().len();
-                    *mesh = Some(vec![None; num_primitives]);
-                }
-            }
-        }
-        let mut accessors = vec![];
-        for m in 0..self.meshes.len() {
-            let mi: MeshIndex = m.into();
-            if self[mi].is_some() {
-                let mesh = &gltf[mi];
-                for p in mesh.primitives() {
-                    if let Some(a) = p.indices() {
-                        accessors.push((true, a));
-                    }
-                    for (_, a) in p.attributes() {
-                        accessors.push((false, *a));
-                    }
-                }
-            }
-        }
-        for (as_index, a) in accessors {
-            if let Some(bv) = gltf[a].buffer_view() {
-                let buffer = gltf[bv].buffer();
-                let byte_start = gltf[bv].byte_offset();
-                let byte_length = gltf[bv].byte_length();
-                self.use_buffer(as_index, buffer, byte_start, byte_length);
             }
         }
     }
@@ -225,12 +211,114 @@ impl ObjectData {
         self[buffer].use_buffer(as_index, byte_start, byte_length);
     }
 
+    //mi derive_uses_of_meshes
+    /// Fill out the meshes and buffer regions that are used
+    fn derive_uses_of_meshes(&mut self, gltf: &Gltf) {
+        for n in 0..self.nodes_used.len() {
+            let ni: NodeIndex = n.into();
+            let node = &gltf[ni];
+            if let Some(node_mesh) = node.mesh() {
+                let mesh = &mut self[node_mesh];
+                if mesh.is_none() {
+                    let num_primitives = gltf[node_mesh].primitives().len();
+                    *mesh = Some(vec![None; num_primitives]);
+                }
+            }
+        }
+    }
+
+    //mi derive_uses_of_materials
+    /// Fill out the materials and generate list of accessors used
+    fn derive_uses_of_materials(&mut self, gltf: &Gltf) -> Vec<(bool, AccessorIndex)> {
+        let mut accessors = vec![];
+        for m in 0..self.meshes.len() {
+            let mi: MeshIndex = m.into();
+            if self[mi].is_some() {
+                let mesh = &gltf[mi];
+                for p in mesh.primitives() {
+                    if let Some(a) = p.indices() {
+                        accessors.push((true, a));
+                    }
+                    for (_, a) in p.attributes() {
+                        accessors.push((false, *a));
+                    }
+                    if let Some(m) = p.material() {
+                        self.materials_used.set_required(m);
+                    }
+                }
+            }
+        }
+        accessors
+    }
+
+    //mi derive_uses_of_accessors
+    /// Fill out the meshes and buffer regions that are used
+    fn derive_uses_of_accessors(&mut self, gltf: &Gltf, accessors: Vec<(bool, AccessorIndex)>) {
+        for (as_index, a) in accessors {
+            if let Some(bv) = gltf[a].buffer_view() {
+                let buffer = gltf[bv].buffer();
+                let byte_start = gltf[bv].byte_offset();
+                let byte_length = gltf[bv].byte_length();
+                self.use_buffer(as_index, buffer, byte_start, byte_length);
+            }
+        }
+    }
+
+    //mi derive_uses_of_textures
+    /// Fill out the texture usage
+    fn derive_uses_of_textures(&mut self, gltf: &Gltf) {
+        for (mi, _use) in self.materials_used.iter_required() {
+            let material = &gltf[mi];
+            if let Some(ti) = material.normal_texture() {
+                self.textures_used.set_required(ti.index());
+            }
+            if let Some(ti) = material.occlusion_texture() {
+                self.textures_used.set_required(ti.index());
+            }
+            if let Some(ti) = material.emissive_texture() {
+                self.textures_used.set_required(ti.index());
+            }
+            if let Some(pbr) = material.pbr_metallic_roughness() {
+                if let Some(ti) = pbr.base_color_texture() {
+                    self.textures_used.set_required(ti.index());
+                }
+                if let Some(ti) = pbr.metallic_roughness_texture() {
+                    self.textures_used.set_required(ti.index());
+                }
+            }
+        }
+    }
+
+    //mi derive_uses_of_images_and_samplers
+    /// Fill out the image usage
+    fn derive_uses_of_images_and_samplers(&mut self, gltf: &Gltf) {
+        for (ti, _use) in self.textures_used.iter_required() {
+            let texture = &gltf[ti];
+            self.images_used.set_required(texture.image());
+            self.samplers_used.set_required(texture.sampler());
+        }
+    }
+
+    //mp derive_uses
+    /// Derive which parts of the Gltf (and which parts of its
+    /// buffers) are required for the selected objects
+    pub fn derive_uses(&mut self, gltf: &Gltf) {
+        self.derive_uses_of_meshes(gltf);
+        let accessors = self.derive_uses_of_materials(gltf);
+        self.derive_uses_of_accessors(gltf, accessors);
+        self.derive_uses_of_textures(gltf);
+        self.derive_uses_of_images_and_samplers(gltf);
+        eprintln!("gltf : object_data : does not yet derive buffer uses of images - it won't gen_buffers for them");
+        // derive buffer uses of images
+        self.images_used.complete_uses();
+    }
+
     //mp uses_buffer_zero
     /// Returns true if buffer index 0 is used by the objects
     ///
     /// This is only valid after *derive_uses* has been invoked
     pub fn uses_buffer_zero(&self) -> bool {
-        if let Some(b) = self.buffers.first() {
+        if let Some(b) = self.buffer_usage.first() {
             b.is_used()
         } else {
             false
@@ -265,7 +353,7 @@ impl ObjectData {
                 b.set_buffer_index(0.into());
             }
         }
-        for i in 0..self.buffers.len() {
+        for i in 0..self.buffer_usage.len() {
             let bi: BufferIndex = i.into();
             let buffer = gltf.take_buffer_data(bi);
             if !self[bi].is_used() {
@@ -318,7 +406,7 @@ impl ObjectData {
         R: Renderable + ?Sized,
     {
         let mut buffer_data = vec![];
-        for i in 0..self.buffers.len() {
+        for i in 0..self.buffer_usage.len() {
             let bi: BufferIndex = i.into();
             if !self[bi].is_used() {
                 continue;
@@ -340,6 +428,40 @@ impl ObjectData {
             }
         }
         buffer_data
+    }
+
+    //mp gen_images
+    /// Generate a Vec of all the images
+    pub fn gen_images<Image, F>(&mut self, gltf: &Gltf, get_image: &F) -> Result<Vec<Image>>
+    where
+        F: Fn((usize, usize, usize), &str) -> std::result::Result<Image, String>,
+    {
+        let mut result = vec![];
+        for (ii, image_use) in self.images_used.iter_mut_required() {
+            let image = &gltf[ii];
+            let od_image = {
+                if let Some(uri) = image.uri() {
+                    get_image((0, 0, 0), uri)
+                } else {
+                    let bv = &gltf[image.buffer_view()];
+                    // Note the use of self.buffer_usage rather than self[bv.buffer()] which would be safer
+                    //
+                    // This is because self is partially borrowed mutably
+                    let buffer = self.buffer_usage[bv.buffer().as_usize()].buffer_index();
+                    let byte_offset = bv.byte_offset();
+                    let byte_length = bv.byte_length();
+                    get_image(
+                        (buffer.as_usize(), byte_offset, byte_length),
+                        image.mime_type(),
+                    )
+                }
+            }
+            .map_err(|e| Error::ImageLoad { reason: e })?;
+            let n = result.len();
+            result.push(od_image);
+            image_use.set_use(n.into());
+        }
+        Ok(result)
     }
 
     //mi make_accessor
@@ -488,24 +610,122 @@ impl ObjectData {
         vertices
     }
 
+    //mp gen_textures
+    /// Generate textures from the objects in the Gltf, given images
+    /// that have been generated already
+    pub fn gen_textures<'textures, F, I, R, T>(
+        &mut self,
+        gltf: &Gltf,
+        image: &F,
+        texture_of_image: &T,
+    ) -> Vec<model3d_base::Texture<'textures, R>>
+    where
+        F: Fn(usize) -> &'textures I,
+        I: 'textures,
+        T: Fn(&'textures I) -> model3d_base::Texture<'textures, R>,
+        R: Renderable + ?Sized,
+    {
+        let mut textures = vec![];
+        for (ti, texture_use) in self.textures_used.iter_mut_required() {
+            let texture = &gltf[ti];
+            let image = image(self.images_used[texture.image].data().unwrap().as_usize());
+            let model_texture = texture_of_image(image);
+            let n = textures.len();
+            textures.push(model_texture);
+            texture_use.set_use(n.into());
+        }
+        textures
+    }
+
     //mp gen_materials
     // Create materials
+    pub fn gen_materials(&mut self, gltf: &Gltf) -> Vec<model3d_base::PbrMaterial> {
+        let mut materials = vec![];
+
+        for (mi, material_use) in self.materials_used.iter_mut_required() {
+            let material = &gltf[mi];
+            let mut pbr_mat = model3d_base::PbrMaterial::of_rgba(0xff112233);
+            if let Some(ti) = material.normal_texture() {
+                if let Some(ti) = self.textures_used[ti.index()].data() {
+                    pbr_mat.set_texture(model3d_base::MaterialAspect::Normal, ti.into());
+                }
+            }
+            if let Some(ti) = material.occlusion_texture() {
+                if let Some(ti) = self.textures_used[ti.index()].data() {
+                    pbr_mat.set_texture(model3d_base::MaterialAspect::Occlusion, ti.into());
+                }
+            }
+            if let Some(ti) = material.emissive_texture() {
+                if let Some(ti) = self.textures_used[ti.index()].data() {
+                    pbr_mat.set_texture(model3d_base::MaterialAspect::Emission, ti.into());
+                }
+            }
+            pbr_mat.set_rgba((255, 255, 255, 255));
+            if let Some(pbr) = material.pbr_metallic_roughness() {
+                if let Some(ti) = pbr.base_color_texture() {
+                    if let Some(ti) = self.textures_used[ti.index()].data() {
+                        pbr_mat.set_texture(model3d_base::MaterialAspect::Color, ti.into());
+                    }
+                }
+                if let Some(ti) = pbr.metallic_roughness_texture() {
+                    if let Some(ti) = self.textures_used[ti.index()].data() {
+                        pbr_mat.set_texture(
+                            model3d_base::MaterialAspect::MetallicRoughness,
+                            ti.into(),
+                        );
+                    }
+                }
+                if let Some(color) = pbr.base_color_factor.as_ref() {
+                    // by spec there must be 4 entries of 0.0 to 1.0 inclusive
+                    if color.len() == 4 {
+                        let r = (color[0] * 255.0) as u8;
+                        let g = (color[1] * 255.0) as u8;
+                        let b = (color[2] * 255.0) as u8;
+                        let a = (color[3] * 255.0) as u8;
+                        pbr_mat.set_rgba((r, g, b, a));
+                    }
+                }
+                pbr_mat.set_mr(pbr.metallic_factor, pbr.roughness_factor);
+            }
+            {
+                let r = (material.emissive_factor[0] * 255.0) as u8;
+                let g = (material.emissive_factor[1] * 255.0) as u8;
+                let b = (material.emissive_factor[2] * 255.0) as u8;
+                pbr_mat.set_emissive_rgb((r, g, b));
+            }
+            let n = materials.len();
+            materials.push(pbr_mat);
+            material_use.set_use(n.into());
+        }
+
+        materials
+    }
 
     //mp gen_object
     /// Create object
-    pub fn gen_object<'object, R>(
+    pub fn gen_object<'object, M, R>(
         &mut self,
         gltf: &Gltf,
         vertices: &'object [model3d_base::Vertices<'object, R>],
-    ) -> model3d_base::Object<'object, R>
+        textures: &'object [model3d_base::Texture<'object, R>],
+        materials: &'object [M],
+    ) -> model3d_base::Object<'object, M, R>
     where
+        M: model3d_base::Material + 'object,
         R: Renderable + ?Sized,
     {
         let mut object = model3d_base::Object::new();
         for v in vertices {
             object.add_vertices(v);
         }
-        for n in &self.nodes {
+        for t in textures {
+            object.add_texture(t);
+        }
+        for m in materials {
+            object.add_material(m);
+        }
+
+        for n in &self.nodes_used {
             let node = &gltf[*n];
             let Some(mi) = node.mesh() else {
                 continue;
@@ -514,7 +734,7 @@ impl ObjectData {
             let Some(od_mesh_prims) = &self[mi] else {
                 continue;
             };
-            let mut mesh = model3d_base::Mesh::new();
+            let mut mesh = model3d_base::Mesh::default();
             for (m_pi, opt_od_vi) in od_mesh_prims.iter().enumerate() {
                 let m_pi: PrimitiveIndex = m_pi.into();
                 let Some(od_vi) = *opt_od_vi else {
@@ -523,15 +743,15 @@ impl ObjectData {
                 let gltf_prim = &gltf_mesh[m_pi];
                 let ia = gltf_prim.indices().unwrap();
                 let index_count = gltf[ia].count() as u32;
-                let mat_ind = 0;
+                let mat_ind: Option<usize> = Some(0);
                 let primitive = model3d_base::Primitive::new(
                     gltf_prim.primitive_type(),
-                    od_vi.as_usize(),
+                    od_vi.into(),
                     0,
                     index_count,
-                    mat_ind,
+                    mat_ind.into(),
                 );
-                eprintln!("Add mesh {mesh:?} {m_pi}");
+                eprintln!("Add mesh {mesh:?} {m_pi} {primitive:?}");
                 mesh.add_primitive(primitive);
             }
             object.add_component(None, Some(*node.global_transformation()), mesh);
