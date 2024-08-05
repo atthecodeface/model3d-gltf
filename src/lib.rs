@@ -89,6 +89,7 @@ mod glb;
 #[cfg(feature = "serde_json")]
 pub use glb::glb_load;
 
+mod asset;
 mod buffer_usage;
 mod buffers_accessors;
 mod image;
@@ -103,14 +104,15 @@ mod deserialize;
 #[cfg(feature = "serde")]
 mod serialize;
 
+pub use asset::GltfAsset;
 pub(crate) use buffer_usage::BufferUsage;
-pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
-pub(crate) use image::GltfImage;
-pub(crate) use material::GltfMaterial;
-pub(crate) use node::GltfNode;
-pub(crate) use primitives_meshes::GltfMesh;
-pub(crate) use scene::GltfScene;
-pub(crate) use texture::{GltfTexture, GltfTextureInfo};
+pub use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};
+pub use image::GltfImage;
+pub use material::GltfMaterial;
+pub use node::GltfNode;
+pub use primitives_meshes::{GltfMesh, GltfPrimitive};
+pub use scene::GltfScene;
+pub use texture::{GltfTexture, GltfTextureInfo};
 
 mod utils;
 pub use utils::{buf_parse_fail, try_buf_parse_base64};

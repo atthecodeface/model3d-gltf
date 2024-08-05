@@ -19,6 +19,11 @@ pub struct GltfScene {
     /// This can include cameras, lights, etc; each must be a root node id
     pub nodes: Vec<NodeIndex>,
 }
+impl GltfScene {
+    pub fn add_node(&mut self, node: NodeIndex) {
+        self.nodes.push(node);
+    }
+}
 
 //ip Named for GltfScene
 impl Named for GltfScene {

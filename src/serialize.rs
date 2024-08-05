@@ -1,10 +1,8 @@
 //a Imports
-use std::collections::HashMap;
-
 use serde;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 
-use crate::{AccessorIndex, Indexable, MaterialIndex, PrimitiveIndex};
+use crate::AccessorIndex;
 
 //a Useful functions
 //fi attr_to_attr

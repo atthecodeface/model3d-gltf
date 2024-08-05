@@ -37,6 +37,17 @@ impl GltfBuffer {
         self.byte_length
     }
 
+    //cp of_base64
+    /// Create from a Base64
+    pub fn of_base64<T: AsRef<[u8]>>(data: T) -> Self {
+        use base64::engine::general_purpose;
+        use base64::Engine;
+        let byte_length = data.as_ref().len();
+        let mut uri = general_purpose::STANDARD.encode(data);
+        uri.insert_str(0, "data:application/octet-stream;base64,");
+        Self { uri, byte_length }
+    }
+
     //mp take_buffer
     /// Take all the contents of the buffer, leaving a buffer in place with an
     /// empty URI
@@ -58,13 +69,13 @@ impl GltfBuffer {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfBufferView {
-    buffer: BufferIndex,
+    pub buffer: BufferIndex,
     #[cfg_attr(feature = "serde", serde(rename = "byteLength"))]
-    byte_length: usize,
+    pub byte_length: usize,
     #[cfg_attr(feature = "serde", serde(rename = "byteOffset"))]
-    byte_offset: usize,
+    pub byte_offset: usize,
     #[cfg_attr(feature = "serde", serde(rename = "byteStride"))]
-    byte_stride: Option<usize>,
+    pub byte_stride: Option<usize>,
 }
 
 impl GltfBufferView {
@@ -149,6 +160,23 @@ pub struct GltfAccessor {
 }
 
 impl GltfAccessor {
+    pub fn new(
+        buffer_view: ViewIndex,
+        byte_offset: usize,
+        count: usize,
+        component_type: mod3d_base::BufferElementType,
+        elements_per_data: usize,
+    ) -> Self {
+        let buffer_view = Some(buffer_view);
+        Self {
+            buffer_view,
+            byte_offset,
+            count,
+            component_type,
+            elements_per_data,
+        }
+    }
+
     //ap buffer_view
     pub fn buffer_view(&self) -> Option<ViewIndex> {
         self.buffer_view

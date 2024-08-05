@@ -119,4 +119,31 @@ impl GltfNode {
     pub fn global_transformation(&self) -> &Transformation {
         &self.global_transformation
     }
+    pub fn set_mesh(&mut self, mesh: MeshIndex) {
+        self.mesh = Some(mesh);
+    }
+    pub fn set_transformation(&mut self, transformation: &mod3d_base::Transformation) {
+        self.local_transformation = *transformation;
+    }
+    pub fn trans_mut(&mut self) -> &mut mod3d_base::Transformation {
+        &mut self.local_transformation
+    }
+    pub fn derive_gltf(&mut self) {
+        if self.local_transformation.scale() != [1., 1., 1.] {
+            self.scale = Some(self.local_transformation.scale());
+        } else {
+            self.scale = None;
+        }
+        if self.local_transformation.translation() != [0., 0., 0.] {
+            self.translation = Some(self.local_transformation.translation());
+        } else {
+            self.translation = None;
+        }
+        let (r, i, j, k) = geo_nd::quat::as_rijk(&self.local_transformation.rotation());
+        if r != 1.0 {
+            self.rotation = Some([i, j, k, r]);
+        } else {
+            self.rotation = None;
+        }
+    }
 }

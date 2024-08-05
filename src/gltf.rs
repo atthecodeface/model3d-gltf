@@ -17,8 +17,8 @@ use crate::{
 };
 use crate::{Error, Named, Result};
 use crate::{
-    GltfAccessor, GltfBuffer, GltfBufferView, GltfImage, GltfMaterial, GltfMesh, GltfNode,
-    GltfScene, GltfTexture,
+    GltfAccessor, GltfAsset, GltfBuffer, GltfBufferView, GltfImage, GltfMaterial, GltfMesh,
+    GltfNode, GltfScene, GltfTexture,
 };
 
 //a Gltf
@@ -31,7 +31,7 @@ pub struct Gltf {
     /// The 'asset' field is required in Gltf; it describes the version of Gltf
     /// that the Json is in, and copyright, generator and other such
     /// information
-    asset: JsonValue,
+    asset: GltfAsset,
 
     /// All the 'buffers' from the Json file, in gltf order; this is
     /// the URI but not any client-side buffer representation
@@ -166,6 +166,69 @@ impl std::ops::Index<MaterialIndex> for Gltf {
 
 //ip Gltf
 impl Gltf {
+    pub fn set_asset(&mut self, asset: GltfAsset) {
+        self.asset = asset;
+    }
+
+    pub fn add_buffer(&mut self, buffer: GltfBuffer) -> BufferIndex {
+        let n = self.buffers.len();
+        self.buffers.push(buffer);
+        n.into()
+    }
+    pub fn add_mesh(&mut self, mesh: GltfMesh) -> MeshIndex {
+        let n = self.meshes.len();
+        self.meshes.push(mesh);
+        n.into()
+    }
+    pub fn add_node(&mut self, node: GltfNode) -> NodeIndex {
+        let n = self.nodes.len();
+        self.nodes.push(node);
+        n.into()
+    }
+    pub fn add_scene(&mut self, scene: GltfScene) -> SceneIndex {
+        let n = self.scenes.len();
+        self.scenes.push(scene);
+        n.into()
+    }
+    pub fn add_view(
+        &mut self,
+        buffer: BufferIndex,
+        byte_offset: usize,
+        byte_length: usize,
+        byte_stride: Option<usize>,
+    ) -> ViewIndex {
+        let view = GltfBufferView {
+            buffer: buffer,
+            byte_length: byte_length,
+            byte_offset: byte_offset,
+            byte_stride: byte_stride,
+        }
+        .into();
+
+        let n = self.buffer_views.len();
+        self.buffer_views.push(view);
+        n.into()
+    }
+    pub fn add_accessor(
+        &mut self,
+        buffer_view: ViewIndex,
+        byte_offset: u32,
+        count: u32,
+        element_type: mod3d_base::BufferElementType,
+        elements_per_data: usize,
+    ) -> AccessorIndex {
+        let acc = GltfAccessor::new(
+            buffer_view,
+            byte_offset as usize,
+            count as usize,
+            element_type,
+            elements_per_data,
+        );
+
+        let n = self.accessors.len();
+        self.accessors.push(acc);
+        n.into()
+    }
     //mp validate_buffer_views
     /// Validate the contents - check indices in range, etc
     fn validate_buffer_views(&self) -> Result<()> {

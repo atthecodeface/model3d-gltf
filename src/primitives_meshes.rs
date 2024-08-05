@@ -10,7 +10,7 @@ use crate::{AccessorIndex, Indexable, MaterialIndex, PrimitiveIndex};
 //a GltfPrimitive
 //tp GltfPrimitive
 /// A Gltf primitive, as deserialized from the Gltf Json
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GltfPrimitive {
     // This must be a map from attribute name to accessor index
@@ -43,6 +43,18 @@ pub struct GltfPrimitive {
 
 //ip GltfPrimitive
 impl GltfPrimitive {
+    pub fn new(
+        mode: mod3d_base::PrimitiveType,
+        indices: Option<AccessorIndex>,
+        material: Option<MaterialIndex>,
+    ) -> Self {
+        Self {
+            mode,
+            indices,
+            material,
+            ..Default::default()
+        }
+    }
     //ap indices
     /// Return the AccessorIndex for the indices of the primitive - or
     /// None if one was not specified (drawArrays should be used to
@@ -71,6 +83,9 @@ impl GltfPrimitive {
     pub fn material(&self) -> Option<MaterialIndex> {
         self.material
     }
+    pub fn add_attribute(&mut self, attr: mod3d_base::VertexAttr, accessor: AccessorIndex) {
+        self.attributes.push((attr, accessor))
+    }
 }
 
 //tp GltfMesh
@@ -88,6 +103,17 @@ pub struct GltfMesh {
 }
 
 impl GltfMesh {
+    pub fn add_primitive(
+        &mut self,
+        mode: mod3d_base::PrimitiveType,
+        indices: Option<AccessorIndex>,
+        material: Option<MaterialIndex>,
+    ) -> PrimitiveIndex {
+        let p = GltfPrimitive::new(mode, indices, material);
+        let n = self.primitives.len();
+        self.primitives.push(p);
+        n.into()
+    }
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -101,5 +127,12 @@ impl std::ops::Index<PrimitiveIndex> for GltfMesh {
     type Output = GltfPrimitive;
     fn index(&self, index: PrimitiveIndex) -> &Self::Output {
         &self.primitives[index.as_usize()]
+    }
+}
+
+//ip IndexMut<PrimitiveIndex> for GltfMesh
+impl std::ops::IndexMut<PrimitiveIndex> for GltfMesh {
+    fn index_mut(&mut self, index: PrimitiveIndex) -> &mut Self::Output {
+        &mut self.primitives[index.as_usize()]
     }
 }

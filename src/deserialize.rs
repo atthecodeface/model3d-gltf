@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use serde;
 use serde::{Deserialize, Deserializer};
 
-use crate::{AccessorIndex, Indexable, MaterialIndex, PrimitiveIndex};
+use crate::AccessorIndex;
 
 //a Deserializer functions
 //fi attr_to_attr
