@@ -4,6 +4,7 @@ use thiserror::Error;
 pub enum GltfError {
     #[error("IO error")]
     Io(#[from] std::io::Error),
+    #[cfg(feature = "serde_json")]
     #[error("Failed to parse GLTF Json")]
     Json(#[from] serde_json::Error),
     #[error("Bad GLTF Json")]

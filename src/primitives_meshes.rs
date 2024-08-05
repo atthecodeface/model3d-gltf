@@ -1,93 +1,41 @@
 //a Imports
-use std::collections::HashMap;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
-use serde::{Deserialize, Deserializer};
+#[cfg(feature = "serde")]
+use crate::{deserialize, serialize};
 
 use crate::{AccessorIndex, Indexable, MaterialIndex, PrimitiveIndex};
-
-//a Deserializer functions
-//fi attr_to_attr
-/// Map an array of Gltf string attribute name/value pairs to a Vec of
-/// tuples of model3d_base::VertexAttr and AccessorIndex
-fn attr_to_attr<'de, D>(
-    de: D,
-) -> std::result::Result<Vec<(model3d_base::VertexAttr, AccessorIndex)>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let m: HashMap<String, usize> = serde::de::Deserialize::deserialize(de)?;
-    let mut r = vec![];
-    for (k, v) in m.into_iter() {
-        use model3d_base::VertexAttr::*;
-        let k = match k.as_ref() {
-            "POSITION" => Position,
-            "NORMAL" => Normal,
-            "COLOR_0" => Color,
-            "TANGENT" => Tangent,
-            "JOINTS_0" => Joints,
-            "WEIGHTS_0" => Weights,
-            "TEXCOORD_0" => TexCoords0,
-            "TEXCOORD_1" => TexCoords1,
-            _ => {
-                return Err(serde::de::Error::custom(format!("Unknown attribute {k}")));
-            }
-        };
-        r.push((k, v.into()));
-    }
-    Ok(r)
-}
-
-//fi primitive_type
-/// Map a Gltf primitive type specified by an integer to a model3d_base::PrimitiveType
-fn primitive_type<'de, D>(de: D) -> std::result::Result<model3d_base::PrimitiveType, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let p: usize = serde::de::Deserialize::deserialize(de)?;
-    use model3d_base::PrimitiveType::*;
-    let pt = match p {
-        0 => Points,
-        1 => Lines,
-        2 => LineLoop,
-        3 => LineStrip,
-        4 => Triangles,
-        5 => TriangleStrip,
-        6 => TriangleFan,
-        _ => {
-            return Err(serde::de::Error::custom(format!(
-                "Unknown primitive mode {p}"
-            )));
-        }
-    };
-    Ok(pt)
-}
-
-//fi pt_triangles
-/// Return the default type for a Gltf primitive type - Triangles
-fn pt_triangles() -> model3d_base::PrimitiveType {
-    model3d_base::PrimitiveType::Triangles
-}
 
 //a GltfPrimitive
 //tp GltfPrimitive
 /// A Gltf primitive, as deserialized from the Gltf Json
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GltfPrimitive {
     // This must be a map from attribute name to accessor index
     //
-    // attribute name - corresponds to model3d_base::VertexAttr
-    #[serde(deserialize_with = "attr_to_attr")]
-    attributes: Vec<(model3d_base::VertexAttr, AccessorIndex)>,
+    // attribute name - corresponds to mod3d_base::VertexAttr
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "deserialize::attr_to_attr")
+    )]
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize::attr_to_attr"))]
+    attributes: Vec<(mod3d_base::VertexAttr, AccessorIndex)>,
     // 0-6: POINTS, LINES, LINE_LOOP, LINE_STRIP, TRIANGLES, TRIANGLE_STRIP,
     // TRIANGLE_FAN default is 4:triangles
-    #[serde(default = "pt_triangles")]
-    #[serde(deserialize_with = "primitive_type")]
-    mode: model3d_base::PrimitiveType,
+    #[cfg_attr(feature = "serde", serde(default = "deserialize::pt_triangles"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "deserialize::primitive_type")
+    )]
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize::primitive_type"))]
+    mode: mod3d_base::PrimitiveType,
     // optional
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     material: Option<MaterialIndex>,
     // optional - if not present then drawArrays should be used
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     indices: Option<AccessorIndex>,
     // optional: targets
     // optional: extensions, extras
@@ -104,16 +52,16 @@ impl GltfPrimitive {
     }
 
     //ap primitive_type
-    /// Return the model3d_base::PrimitiveType of the primitive
+    /// Return the mod3d_base::PrimitiveType of the primitive
     /// (TriangleStrip, etc)
-    pub fn primitive_type(&self) -> model3d_base::PrimitiveType {
+    pub fn primitive_type(&self) -> mod3d_base::PrimitiveType {
         self.mode
     }
 
     //ap attributes
-    /// Return a slice of tuples of model3d_base::VertexAttr and
+    /// Return a slice of tuples of mod3d_base::VertexAttr and
     /// AccessorIndex from the Gltf for the primitive
-    pub fn attributes(&self) -> &[(model3d_base::VertexAttr, AccessorIndex)] {
+    pub fn attributes(&self) -> &[(mod3d_base::VertexAttr, AccessorIndex)] {
         &self.attributes
     }
 
@@ -125,11 +73,13 @@ impl GltfPrimitive {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+//tp GltfMesh
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfMesh {
     /// The name of the mesh, if any
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     name: String,
     /// The primitives that make up the mesh
     primitives: Vec<GltfPrimitive>,

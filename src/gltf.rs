@@ -1,8 +1,15 @@
 //a Imports
-use model3d_base::hierarchy::Hierarchy;
-use model3d_base::Transformation;
-use serde::Deserialize;
+use mod3d_base::hierarchy::Hierarchy;
+use mod3d_base::Transformation;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "serde_json")]
 use serde_json::Value as JsonValue;
+
+#[cfg(not(feature = "serde_json"))]
+pub type JsonValue = ();
 
 use crate::{
     AccessorIndex, BufferIndex, ImageIndex, Indexable, MaterialIndex, MeshIndex, NHIndex,
@@ -17,8 +24,9 @@ use crate::{
 //a Gltf
 //tp Gltf
 /// A Gltf file
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct Gltf {
     /// The 'asset' field is required in Gltf; it describes the version of Gltf
     /// that the Json is in, and copyright, generator and other such
@@ -32,7 +40,7 @@ pub struct Gltf {
     /// All the 'bufferViews' from the Json file, in gltf order;
     /// buffers are referred to by BufferIndex into the 'buffers'
     /// property
-    #[serde(rename = "bufferViews")]
+    #[cfg_attr(feature = "serde", serde(rename = "bufferViews"))]
     buffer_views: Vec<GltfBufferView>,
 
     /// All the 'accessors' from the Json file, in gltf order;
@@ -88,13 +96,15 @@ pub struct Gltf {
     /// the nodes to form distinct trees (each node is in precisely
     /// one tree) so a hierarchy will have each NodeInde once as
     /// either a root or once as the child of a single parent
-    #[serde(skip_deserializing)]
+    #[cfg_attr(feature = "serde", serde(skip_deserializing))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing))]
     node_hierarchy: Hierarchy<NodeIndex>,
 
     /// A mapping from NodeIndex to node_hierarchy index
     ///
     /// Which node hierarchy element a particular NodeIndex corresponds to
-    #[serde(skip_deserializing)]
+    #[cfg_attr(feature = "serde", serde(skip_deserializing))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing))]
     nh_index: Vec<NHIndex>,
 }
 
@@ -310,6 +320,7 @@ impl Gltf {
     //cp of_json_value
     /// Create a [GltfJsonValue] from a [serde::json::Value], doing
     /// some validation
+    #[cfg(feature = "serde_json")]
     pub fn of_json_value(json_value: JsonValue) -> Result<Self> {
         let mut s: Self = serde_json::from_value(json_value)?;
         s.validate()?;

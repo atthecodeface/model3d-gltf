@@ -10,18 +10,26 @@
 // 'joints' fields) which are referenced by the same scenes as this node is
 // (through its hierarchy) referenced from. If this
 //
-use serde::Deserialize;
-use serde_json::Value as JsonValue;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
-use model3d_base::Transformation;
+#[cfg(feature = "serde_json")]
+use serde_json::Value as JsonValue;
+#[cfg(not(feature = "serde_json"))]
+pub type JsonValue = ();
+
+use mod3d_base::Transformation;
 
 use crate::{CameraIndex, MeshIndex, Named, NodeIndex, SkinIndex};
 use crate::{Error, Result};
 
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+//a GltfNode
+//tp GltfNode
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfNode {
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     name: String,
     /// The children of the node; if there are none then this is a root node
     children: Vec<NodeIndex>,
@@ -33,19 +41,22 @@ pub struct GltfNode {
     translation: Option<[f32; 3]>,
     scale: Option<[f32; 3]>,
     weights: Option<JsonValue>,
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     local_transformation: Transformation,
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     global_transformation: Transformation,
     // optional: extensions, extras
 }
 
+//ip Named for GltfNode
 impl Named for GltfNode {
     type Index = NodeIndex;
     fn is_name(&self, name: &str) -> bool {
         self.name == name
     }
 }
+
+//ip GltfNode
 impl GltfNode {
     pub fn validate(&self, n: NodeIndex) -> Result<()> {
         if self.skin.is_some() && self.mesh.is_none() {

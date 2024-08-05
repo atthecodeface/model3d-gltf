@@ -1,22 +1,24 @@
 //a Imports
-use serde::Deserialize;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::Named;
 use crate::{ImageIndex, ViewIndex};
 
 //a GltfImage
 //tp GltfImage
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfImage {
     /// Optional name of the image
     pub name: String,
     /// Optional URI
     pub uri: Option<String>,
     /// Optional mime type ("image/jpeg" or "image/png")
-    #[serde(rename = "mimeType")]
+    #[cfg_attr(feature = "serde", serde(rename = "mimeType"))]
     pub mime_type: String,
-    #[serde(rename = "bufferView")]
+    #[cfg_attr(feature = "serde", serde(rename = "bufferView"))]
     pub buffer_view: ViewIndex,
 }
 

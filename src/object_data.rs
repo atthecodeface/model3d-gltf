@@ -1,6 +1,6 @@
 //a Imports
-use model3d_base::hierarchy::NodeEnumOp;
-use model3d_base::{BufferAccessor, BufferData, ByteBuffer, Renderable};
+use mod3d_base::hierarchy::NodeEnumOp;
+use mod3d_base::{BufferAccessor, BufferData, ByteBuffer, Renderable};
 
 use crate::try_buf_parse_base64;
 use crate::Gltf;
@@ -16,7 +16,7 @@ use crate::{
 
 //a ObjectData
 //tp ObjectData
-/// The type that is used to construct model3d_base from a Gltf
+/// The type that is used to construct mod3d_base from a Gltf
 ///
 /// The objects from the Gltf that are required by the client must be added to this, so that
 /// the node hierarchy can be interrogated to determine which buffers,
@@ -25,9 +25,9 @@ use crate::{
 ///
 /// Once the objects are added the uses must be derived (no more objects can be added at this point).
 ///
-/// Once derived the model3d_base::Buffer required must be generated;
-/// then the model3d_base::BufferData; then the
-/// model3d_base::BufferAccessor. These generate Vec of the relevant
+/// Once derived the mod3d_base::Buffer required must be generated;
+/// then the mod3d_base::BufferData; then the
+/// mod3d_base::BufferAccessor. These generate Vec of the relevant
 /// types, which must remain live until any object is made into an
 /// Instantiable; the [ObjectData] maintains indiices into these Vec
 /// for the Gltf buffers (etc) that are used by the required objects.
@@ -35,10 +35,10 @@ use crate::{
 /// Then the Vertices are created; these borrow from the previous Vec
 /// of Buffer-related structures
 ///
-/// Finally a model3d_base::Object can be created, from which the
-/// client can create a model3d_base::Instantiable; at this point the
+/// Finally a mod3d_base::Object can be created, from which the
+/// client can create a mod3d_base::Instantiable; at this point the
 /// buffer data and vertices can be dropped (if the
-/// model3d_base::Renderable permits it)
+/// mod3d_base::Renderable permits it)
 #[derive(Debug)]
 pub struct ObjectData {
     /// Nodes used in the object; this must contain all the mesh nodes (but not
@@ -81,7 +81,7 @@ pub struct ObjectData {
     ///
     /// This maps each primitive that is used in each mesh that is
     /// used (in the order of the Gltf fiile itself) to a client
-    /// Vertices index (which must be the same index as in the model3d_base::Object
+    /// Vertices index (which must be the same index as in the mod3d_base::Object
     meshes: Vec<Option<Vec<Option<ODVerticesIndex>>>>,
 }
 
@@ -416,14 +416,14 @@ impl ObjectData {
                 self[bi].set_buffer_data(true, buffer_data.len().into());
                 let byte_offset = self[bi].index_data().start;
                 let byte_length = self[bi].index_data().end - byte_offset;
-                let bd = model3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
+                let bd = mod3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
                 buffer_data.push(bd);
             }
             if self[bi].has_vertex_data() {
                 self[bi].set_buffer_data(false, buffer_data.len().into());
                 let byte_offset = self[bi].vertex_data().start;
                 let byte_length = self[bi].vertex_data().end - byte_offset;
-                let bd = model3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
+                let bd = mod3d_base::BufferData::new(b, byte_offset as u32, byte_length as u32);
                 buffer_data.push(bd);
             }
         }
@@ -558,7 +558,7 @@ impl ObjectData {
         &mut self,
         gltf: &Gltf,
         buffer_accessor: &F,
-    ) -> Vec<model3d_base::Vertices<'vertices, R>>
+    ) -> Vec<mod3d_base::Vertices<'vertices, R>>
     where
         F: Fn(usize) -> &'vertices BufferAccessor<'vertices, R>,
         R: Renderable + ?Sized,
@@ -576,7 +576,7 @@ impl ObjectData {
                 };
                 let mut pa = None;
                 for (va, vpa) in p.attributes() {
-                    if *va == model3d_base::VertexAttr::Position {
+                    if *va == mod3d_base::VertexAttr::Position {
                         pa = Some(vpa);
                         break;
                     }
@@ -592,9 +592,9 @@ impl ObjectData {
                 };
                 let indices = buffer_accessor(ia.as_usize());
                 let positions = buffer_accessor(pa.as_usize());
-                let mut v = model3d_base::Vertices::new(indices, positions);
+                let mut v = mod3d_base::Vertices::new(indices, positions);
                 for (va, vpa) in p.attributes() {
-                    if *va == model3d_base::VertexAttr::Position {
+                    if *va == mod3d_base::VertexAttr::Position {
                         continue;
                     }
                     if let Some(vpa) = self[*vpa] {
@@ -618,11 +618,11 @@ impl ObjectData {
         gltf: &Gltf,
         image: &F,
         texture_of_image: &T,
-    ) -> Vec<model3d_base::Texture<'textures, R>>
+    ) -> Vec<mod3d_base::Texture<'textures, R>>
     where
         F: Fn(usize) -> &'textures I,
         I: 'textures,
-        T: Fn(&'textures I) -> model3d_base::Texture<'textures, R>,
+        T: Fn(&'textures I) -> mod3d_base::Texture<'textures, R>,
         R: Renderable + ?Sized,
     {
         let mut textures = vec![];
@@ -639,40 +639,38 @@ impl ObjectData {
 
     //mp gen_materials
     // Create materials
-    pub fn gen_materials(&mut self, gltf: &Gltf) -> Vec<model3d_base::PbrMaterial> {
+    pub fn gen_materials(&mut self, gltf: &Gltf) -> Vec<mod3d_base::PbrMaterial> {
         let mut materials = vec![];
 
         for (mi, material_use) in self.materials_used.iter_mut_required() {
             let material = &gltf[mi];
-            let mut pbr_mat = model3d_base::PbrMaterial::of_rgba(0xff112233);
+            let mut pbr_mat = mod3d_base::PbrMaterial::of_rgba(0xff112233);
             if let Some(ti) = material.normal_texture() {
                 if let Some(ti) = self.textures_used[ti.index()].data() {
-                    pbr_mat.set_texture(model3d_base::MaterialAspect::Normal, ti.into());
+                    pbr_mat.set_texture(mod3d_base::MaterialAspect::Normal, ti.into());
                 }
             }
             if let Some(ti) = material.occlusion_texture() {
                 if let Some(ti) = self.textures_used[ti.index()].data() {
-                    pbr_mat.set_texture(model3d_base::MaterialAspect::Occlusion, ti.into());
+                    pbr_mat.set_texture(mod3d_base::MaterialAspect::Occlusion, ti.into());
                 }
             }
             if let Some(ti) = material.emissive_texture() {
                 if let Some(ti) = self.textures_used[ti.index()].data() {
-                    pbr_mat.set_texture(model3d_base::MaterialAspect::Emission, ti.into());
+                    pbr_mat.set_texture(mod3d_base::MaterialAspect::Emission, ti.into());
                 }
             }
             pbr_mat.set_rgba((255, 255, 255, 255));
             if let Some(pbr) = material.pbr_metallic_roughness() {
                 if let Some(ti) = pbr.base_color_texture() {
                     if let Some(ti) = self.textures_used[ti.index()].data() {
-                        pbr_mat.set_texture(model3d_base::MaterialAspect::Color, ti.into());
+                        pbr_mat.set_texture(mod3d_base::MaterialAspect::Color, ti.into());
                     }
                 }
                 if let Some(ti) = pbr.metallic_roughness_texture() {
                     if let Some(ti) = self.textures_used[ti.index()].data() {
-                        pbr_mat.set_texture(
-                            model3d_base::MaterialAspect::MetallicRoughness,
-                            ti.into(),
-                        );
+                        pbr_mat
+                            .set_texture(mod3d_base::MaterialAspect::MetallicRoughness, ti.into());
                     }
                 }
                 if let Some(color) = pbr.base_color_factor.as_ref() {
@@ -706,15 +704,15 @@ impl ObjectData {
     pub fn gen_object<'object, M, R>(
         &mut self,
         gltf: &Gltf,
-        vertices: &'object [model3d_base::Vertices<'object, R>],
-        textures: &'object [model3d_base::Texture<'object, R>],
+        vertices: &'object [mod3d_base::Vertices<'object, R>],
+        textures: &'object [mod3d_base::Texture<'object, R>],
         materials: &'object [M],
-    ) -> model3d_base::Object<'object, M, R>
+    ) -> mod3d_base::Object<'object, M, R>
     where
-        M: model3d_base::Material + 'object,
+        M: mod3d_base::Material + 'object,
         R: Renderable + ?Sized,
     {
-        let mut object = model3d_base::Object::new();
+        let mut object = mod3d_base::Object::new();
         for v in vertices {
             object.add_vertices(v);
         }
@@ -734,7 +732,7 @@ impl ObjectData {
             let Some(od_mesh_prims) = &self[mi] else {
                 continue;
             };
-            let mut mesh = model3d_base::Mesh::default();
+            let mut mesh = mod3d_base::Mesh::default();
             for (m_pi, opt_od_vi) in od_mesh_prims.iter().enumerate() {
                 let m_pi: PrimitiveIndex = m_pi.into();
                 let Some(od_vi) = *opt_od_vi else {
@@ -744,7 +742,7 @@ impl ObjectData {
                 let ia = gltf_prim.indices().unwrap();
                 let index_count = gltf[ia].count() as u32;
                 let mat_ind: Option<usize> = Some(0);
-                let primitive = model3d_base::Primitive::new(
+                let primitive = mod3d_base::Primitive::new(
                     gltf_prim.primitive_type(),
                     od_vi.into(),
                     0,

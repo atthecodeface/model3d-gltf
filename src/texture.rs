@@ -1,5 +1,6 @@
 //a Imports
-use serde::Deserialize;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::Named;
 use crate::{ImageIndex, SamplerIndex, TextureIndex};
@@ -9,13 +10,14 @@ use crate::{ImageIndex, SamplerIndex, TextureIndex};
 /// A type representing a Gltf Texture Info, which is instantiated in
 /// different ways for different aspects of a material, and which
 /// refers to a Texture (and TexCoord number)
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfTextureInfo {
     /// Optional name of the texture
     pub index: TextureIndex,
     /// Image index (source)
-    #[serde(rename = "texCoord")]
+    #[cfg_attr(feature = "serde", serde(rename = "texCoord"))]
     pub tex_coord: usize,
     /// Scale - for normal textures only
     pub scale: f32,
@@ -32,16 +34,16 @@ impl GltfTextureInfo {
 //a GltfTexture
 //tp GltfTexture
 /// A type representing a Gltf Texture -
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfTexture {
     /// Optional name of the texture
     pub name: String,
     /// Image index (source)
-    #[serde(rename = "source")]
+    #[cfg_attr(feature = "serde", serde(rename = "source"))]
     pub image: ImageIndex,
     /// Sampler index
-    #[serde(rename = "sampler")]
     pub sampler: SamplerIndex,
 }
 

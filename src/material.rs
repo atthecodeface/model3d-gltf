@@ -1,28 +1,35 @@
 //a Imports
-use serde::Deserialize;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "serde")]
+use crate::deserialize;
 
 use crate::Named;
 use crate::{GltfTextureInfo, MaterialIndex};
 
-fn f32_one() -> f32 {
-    1.0
-}
-
 //tp GltfPbrMetallicRoughness
 ///
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfPbrMetallicRoughness {
     /// Base color factor
-    #[serde(rename = "baseColorFactor")]
+    #[cfg_attr(feature = "serde", serde(rename = "baseColorFactor"))]
     pub base_color_factor: Option<Vec<f32>>,
-    #[serde(rename = "baseColorTexture")]
+    #[cfg_attr(feature = "serde", serde(rename = "baseColorTexture"))]
     pub base_color_texture: Option<GltfTextureInfo>,
-    #[serde(rename = "metallicRoughnessTexture")]
+    #[cfg_attr(feature = "serde", serde(rename = "metallicRoughnessTexture"))]
     pub metallic_roughness_texture: Option<GltfTextureInfo>,
-    #[serde(rename = "metallicFactor", default = "f32_one")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "metallicFactor", default = "deserialize::f32_one")
+    )]
     pub metallic_factor: f32,
-    #[serde(rename = "roughnessFactor", default = "f32_one")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "roughnessFactor", default = "deserialize::f32_one")
+    )]
     pub roughness_factor: f32,
 }
 
@@ -38,34 +45,35 @@ impl GltfPbrMetallicRoughness {
 //a GltfMaterial
 //tp GltfMaterial
 /// A type representing a Gltf Material -
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfMaterial {
     /// Optional name of the material
     pub name: String,
     /// Image index (source)
-    #[serde(rename = "normalTexture")]
+    #[cfg_attr(feature = "serde", serde(rename = "normalTexture"))]
     pub normal_texture: Option<GltfTextureInfo>,
     /// occlusion texture
-    #[serde(rename = "occlusionTexture")]
+    #[cfg_attr(feature = "serde", serde(rename = "occlusionTexture"))]
     pub occlusion_texture: Option<GltfTextureInfo>,
     /// emissive texture
-    #[serde(rename = "emissiveTexture")]
+    #[cfg_attr(feature = "serde", serde(rename = "emissiveTexture"))]
     pub emissive_texture: Option<GltfTextureInfo>,
     /// pbrMetallicRoughness
-    #[serde(rename = "pbrMetallicRoughness")]
+    #[cfg_attr(feature = "serde", serde(rename = "pbrMetallicRoughness"))]
     pub pbr_metallic_roughness: Option<GltfPbrMetallicRoughness>,
 
     /// Emissive factor
-    #[serde(rename = "emissiveFactor")]
+    #[cfg_attr(feature = "serde", serde(rename = "emissiveFactor"))]
     pub emissive_factor: [f32; 3],
 
     /// One of OPAQUE, MASK, BLEND
-    #[serde(rename = "alphaMode")]
+    #[cfg_attr(feature = "serde", serde(rename = "alphaMode"))]
     pub alpha_mode: Option<String>,
-    #[serde(rename = "alphaCutoff")]
+    #[cfg_attr(feature = "serde", serde(rename = "alphaCutoff"))]
     pub alpha_cutoff: f32,
-    #[serde(rename = "doubleSided")]
+    #[cfg_attr(feature = "serde", serde(rename = "doubleSided"))]
     pub double_sided: bool,
 }
 

@@ -84,7 +84,9 @@ pub use types::*;
 mod traits;
 pub use traits::Named;
 
+#[cfg(feature = "serde_json")]
 mod glb;
+#[cfg(feature = "serde_json")]
 pub use glb::glb_load;
 
 mod buffer_usage;
@@ -95,6 +97,11 @@ mod node;
 mod primitives_meshes;
 mod scene;
 mod texture;
+
+#[cfg(feature = "serde")]
+mod deserialize;
+#[cfg(feature = "serde")]
+mod serialize;
 
 pub(crate) use buffer_usage::BufferUsage;
 pub(crate) use buffers_accessors::{GltfAccessor, GltfBuffer, GltfBufferView};

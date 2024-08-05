@@ -1,76 +1,25 @@
 //a Imports
-use serde::{Deserialize, Deserializer};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "serde")]
+use crate::{deserialize, serialize};
 
 use crate::{BufferIndex, ViewIndex};
-
-//a Useful functions
-//fi comp_type_to_ele_type
-/// Map a Gltf JSON accessor element type integer to a BufferElementType - such
-/// as Float32
-///
-/// If the value is invalid
-fn comp_type_to_ele_type<'de, D>(
-    de: D,
-) -> std::result::Result<model3d_base::BufferElementType, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let c: usize = serde::de::Deserialize::deserialize(de)?;
-    use model3d_base::BufferElementType::*;
-    Ok(match c {
-        5120 => Int8,
-        5121 => Int8, // unsigned
-        5122 => Int16,
-        5123 => Int16, // unsigned
-        5124 => Int32,
-        5125 => Int32, // unsigned
-        5126 => Float32,
-        _ => {
-            return Err(serde::de::Error::custom(format!(
-                "Unknown accessor element type {c}"
-            )))
-        }
-    })
-}
-
-//fi ele_type_s32
-/// The default element type if not provided bya Gltf JSON
-fn ele_type_s32() -> model3d_base::BufferElementType {
-    model3d_base::BufferElementType::Int32
-}
-
-//fi type_to_num
-/// Map a Gltf JSON element array/scalar type name to a number of elements
-fn type_to_num<'de, D>(de: D) -> std::result::Result<usize, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = serde::de::Deserialize::deserialize(de)?;
-    match s.as_ref() {
-        "SCALAR" => Ok(1),
-        "VEC2" => Ok(2),
-        "VEC3" => Ok(3),
-        "VEC4" => Ok(4),
-        "MAT2" => Ok(2),
-        "MAT3" => Ok(9),
-        "MAT4" => Ok(16),
-        _ => Err(format!("Unknown accessor type {s}")),
-    }
-    .map_err(serde::de::Error::custom)
-}
 
 //a GltfBuffer
 //tp GltfBuffer
 ///
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfBuffer {
     /// The URI specified by the buffer; this might be a data:URI containing
     /// the data itself, or maybe a relative path to a binary data or image
     uri: String,
     /// The byte length of the buffer - any provided URI contents must be at
     /// least this length
-    #[serde(rename = "byteLength")]
+    #[cfg_attr(feature = "serde", serde(rename = "byteLength"))]
     byte_length: usize,
 }
 
@@ -105,15 +54,16 @@ impl GltfBuffer {
 //tp GltfBufferView
 /// A view onto a buffer (refered to be index into the Gltf file array of
 /// buffers), referencing a subset of the buffer given by an offset and length
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfBufferView {
     buffer: BufferIndex,
-    #[serde(rename = "byteLength")]
+    #[cfg_attr(feature = "serde", serde(rename = "byteLength"))]
     byte_length: usize,
-    #[serde(rename = "byteOffset")]
+    #[cfg_attr(feature = "serde", serde(rename = "byteOffset"))]
     byte_offset: usize,
-    #[serde(rename = "byteStride")]
+    #[cfg_attr(feature = "serde", serde(rename = "byteStride"))]
     byte_stride: Option<usize>,
 }
 
@@ -154,31 +104,44 @@ impl GltfBufferView {
 /// The stride is provided by the buffer view itself, as it is common for all
 /// accessors using a buffer view (in Gltf). If the buffer view has a stride of
 /// 0 then the actual stride is the size of the N-element type.
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+// #[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfAccessor {
     /// The buffer view that contains the data for the accessor
     ///
     /// If this is None then zeros are supposed to be used for the accessor
     /// contents
-    #[serde(rename = "bufferView")]
+    #[cfg_attr(feature = "serde", serde(rename = "bufferView"))]
     buffer_view: Option<ViewIndex>,
     /// Byte offset from start of the view (or offset+k*stride) for the
     /// N-element data structure the accessor defines
-    #[serde(rename = "byteOffset")]
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(rename = "byteOffset"))]
+    #[cfg_attr(feature = "serde", serde(default))]
     byte_offset: usize,
     /// The type of the element; in Gltf JSON this is encoded with a magic
     /// number; the default value is signed 32-bit integer
-    #[serde(rename = "componentType")]
+    #[cfg_attr(feature = "serde", serde(rename = "componentType"))]
     // 5120-5126: s8, u8, s16, u16, s32, u32, f32 else s32
-    #[serde(deserialize_with = "comp_type_to_ele_type")]
-    #[serde(default = "ele_type_s32")]
-    component_type: model3d_base::BufferElementType,
-    #[serde(rename = "count")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "deserialize::comp_type_to_ele_type")
+    )]
+    #[cfg_attr(feature = "serde", serde(default = "deserialize::ele_type_s32"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(serialize_with = "serialize::ele_type_to_comp_type")
+    )]
+    component_type: mod3d_base::BufferElementType,
+    #[cfg_attr(feature = "serde", serde(rename = "count"))]
     // minimum 1
     count: usize,
-    #[serde(rename = "type")]
-    #[serde(deserialize_with = "type_to_num")]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "deserialize::type_to_num")
+    )]
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize::num_to_type"))]
     // SCALAR, VEC2, VEC3, VEC5, MAT2, MAT3, MAT4, string
     elements_per_data: usize,
     // optional: normalized, max, min, sparse
@@ -202,7 +165,7 @@ impl GltfAccessor {
     }
 
     //ap component_type
-    pub fn component_type(&self) -> model3d_base::BufferElementType {
+    pub fn component_type(&self) -> mod3d_base::BufferElementType {
         self.component_type
     }
 

@@ -1,5 +1,6 @@
 //a Imports
-use serde::Deserialize;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::Named;
 use crate::{NodeIndex, SceneIndex};
@@ -7,8 +8,9 @@ use crate::{NodeIndex, SceneIndex};
 //a GltfScene
 //tp GltfScene
 /// A type that contains the data from a Gltf Json 'Scene'
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GltfScene {
     /// Optional name of the scene
     pub name: String,

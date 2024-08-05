@@ -1,6 +1,8 @@
-use model3d_gltf::{Error, Gltf};
+use mod3d_gltf::{Error, Gltf};
+#[cfg(feature = "serde_json")]
 use serde_json::Value as JsonValue;
 
+#[cfg(feature = "serde_json")]
 #[test]
 fn simple() -> Result<(), Error> {
     const JSON: &str = r##"
@@ -162,15 +164,15 @@ fn simple() -> Result<(), Error> {
     assert_eq!(gltf.get_node("1"), gltf.get_node("Light"));
     assert_eq!(gltf.get_node("2"), gltf.get_node("Camera"));
 
-    let mut od = model3d_gltf::ObjectData::new(&gltf);
+    let mut od = mod3d_gltf::ObjectData::new(&gltf);
     od.add_object(&gltf, gltf.get_node("Cube").unwrap());
     od.derive_uses(&gltf);
-    let buffers = od.gen_byte_buffers(&mut gltf, &model3d_gltf::buf_parse_fail, None)?;
+    let buffers = od.gen_byte_buffers(&mut gltf, &mod3d_gltf::buf_parse_fail, None)?;
     let buffer_data =
-        od.gen_buffer_data::<_, _, model3d_base::example_client::Renderable>(&|x| &buffers[x]);
+        od.gen_buffer_data::<_, _, mod3d_base::example_client::Renderable>(&|x| &buffers[x]);
     let buffer_accessors = od.gen_accessors(&gltf, &|x| &buffer_data[x]);
     let vertices = od.gen_vertices(&gltf, &|x| &buffer_accessors[x]);
-    let _object: model3d_base::Object<model3d_base::BaseMaterial, _> =
+    let _object: mod3d_base::Object<mod3d_base::BaseMaterial, _> =
         od.gen_object(&gltf, &vertices, &[], &[]);
     println!("{od:?}");
     println!("{buffers:?}");

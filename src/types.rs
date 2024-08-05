@@ -1,14 +1,21 @@
-use serde::{self, Deserialize};
+//a Imports
+#[cfg(feature = "serde")]
+use serde::{self, Deserialize, Serialize};
 
+//a Indexable and index_type macro
+//tt Indexable
 pub trait Indexable:
     Sized + std::ops::Deref<Target = usize> + std::ops::DerefMut + std::convert::From<usize>
 {
     fn as_usize(&self) -> usize;
 }
+
+//mi index_type
 macro_rules! index_type {
     ( $t:ident ) => {
-        #[derive(Default, Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
-        #[serde(transparent)]
+        #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+        #[cfg_attr(feature = "serde", serde(transparent))]
         pub struct $t(usize);
         impl std::ops::Deref for $t {
             type Target = usize;
@@ -31,13 +38,13 @@ macro_rules! index_type {
                 Self(value)
             }
         }
-        impl From<$t> for model3d_base::ShortIndex {
-            fn from(value: $t) -> model3d_base::ShortIndex {
+        impl From<$t> for mod3d_base::ShortIndex {
+            fn from(value: $t) -> mod3d_base::ShortIndex {
                 value.0.into()
             }
         }
-        impl From<&$t> for model3d_base::ShortIndex {
-            fn from(value: &$t) -> model3d_base::ShortIndex {
+        impl From<&$t> for mod3d_base::ShortIndex {
+            fn from(value: &$t) -> mod3d_base::ShortIndex {
                 value.0.into()
             }
         }
@@ -54,6 +61,7 @@ macro_rules! index_type {
     };
 }
 
+//a Index types
 index_type!(NHIndex);
 
 index_type!(MeshIndex);
